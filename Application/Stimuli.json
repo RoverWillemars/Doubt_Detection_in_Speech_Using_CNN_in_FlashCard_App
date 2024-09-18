@@ -1,0 +1,25 @@
+{
+"Stimuli": {
+
+ "afg":
+  {
+   "No": "1",
+   "Name": "Afghanistan",
+   "Dir": "/Images/Country_Outlines/afghanistan.jpg"
+  }
+  
+ "arg":
+  {
+   "No": "2",
+   "Name": "Argentina",
+   "Dir": "/Images/Country_Outlines/argentina.jpg"
+  }
+  
+ "bel":
+  {
+   "No": "3",
+   "Name": "Belgium",
+   "Dir": "/Images/Country_Outlines/belgium.jpg"
+  
+ }
+}
