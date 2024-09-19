@@ -5,7 +5,7 @@ import os
 import speech_recognition as sr
 
 # set cwd
-os.chdir("YOUR_DIR")
+#os.chdir("YOUR_DIR")
 
 # assign file
 filename = "test.wav"
