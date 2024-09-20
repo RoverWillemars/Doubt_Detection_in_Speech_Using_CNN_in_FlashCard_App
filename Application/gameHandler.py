@@ -1,4 +1,5 @@
 import pygame
+import random
 
 # Initialize the window
 def init_pygame(width, height):
@@ -22,7 +23,8 @@ def runExperiment():
 
 # Bring user back the main menu, from in the experiment.
 def quitExperiment():
-    test = 2
+    GoToMenu = True
+    return GoToMenu
 
 # Close the window fully
 def quitApp():
@@ -57,3 +59,22 @@ class Button():
         screen.blit(self.button_image, (self.rect.x, self.rect.y))
 
         return action
+    
+# Call this class to show a stimulus on the screen. Takes as input the stimulus' country first 3 letters. e.g. afghanistan = afg, belgium = bel    
+class drawStimuli():
+    def __init__(self, x, y, country_image, screen, scale):
+        self.country_image = country_image
+        self.rect = self.country_image.get_rect()
+        self.rect.topleft = (x, y)
+        self.country_image = pygame.transform.scale_by(self.country_image, factor = scale)
+        screen.blit(self.country_image, (self.rect.x, self.rect.y)) # draw stimuli
+        
+
+# This class should be used to determine what the next stimuli would be. Make it based on the Slimstampen ROF variable. Currently just does it randomly.
+class getStimuli():
+    def __init__(self):
+        self.stim_countries = ["afg", "arg", "bel"] # saf = south africa. Would be nice to implement the json file here
+
+    def get_country_path(self):
+        selected_country = random.choice(self.stim_countries)
+        return f".\Images\Country_Outlines\{selected_country}.jpg" # returns the directory of the country.
