@@ -1,5 +1,6 @@
 import pygame
 import random
+import speech_recognition as sr
 
 # Initialize the window
 def init_pygame(width, height):
@@ -68,7 +69,6 @@ class drawStimuli():
         self.rect.topleft = (x, y)
         self.country_image = pygame.transform.scale_by(self.country_image, factor = scale)
         screen.blit(self.country_image, (self.rect.x, self.rect.y)) # draw stimuli
-        
 
 # This class should be used to determine what the next stimuli would be. Make it based on the Slimstampen ROF variable. Currently just does it randomly.
 class getStimuli():
@@ -78,3 +78,17 @@ class getStimuli():
     def get_country_path(self):
         selected_country = random.choice(self.stim_countries)
         return f".\Images\Country_Outlines\{selected_country}.jpg" # returns the directory of the country.
+    
+def speech_to_text():
+    try:
+        r = sr.Recognizer()
+        mic = sr.Microphone()
+        with mic as source:
+            r.adjust_for_ambient_noise(source)
+            audio = r.listen(source)
+        
+        
+            
+        return f"Answer: {r.recognize_google(audio)}"
+    except sr.UnknownValueError:
+        return f"No words could be analysed from your speech"

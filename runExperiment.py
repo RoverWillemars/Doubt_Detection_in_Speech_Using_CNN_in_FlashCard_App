@@ -54,6 +54,7 @@ while(runApp == True):
     
     # Starting variables for the experiment:
     trial = 0 
+    font = pygame.font.SysFont(None, 25)
 
     while(experimentOn == True):
         if trial == 0:
@@ -77,6 +78,10 @@ while(runApp == True):
                 pygame.time.wait(2000)
 
                 drawStimuli(x = 337, y = 0, country_image = stim_image, screen = screen, scale = 0.5) # Draws stimulus. scale changes the size of the stimulus. However, if you change scale, also change x & y coord
+
+                answer = speech_to_text() # Uses the speech_to_text function in gameHandler to return the transcription of what has been spoken
+                text = font.render(answer, True, (0,0,255)) # Sets the font, maybe place somewhere else? Or is it needed? idk
+                screen.blit(text, (screen_width/2, 500)) # draw the spoken text (transcription) on screen. 
 
                 trial = trial + 1 # Currently uses this to keep track of trial, as there is no correct/incorrect of the trial yet.
                 print(trial)
