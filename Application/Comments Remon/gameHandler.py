@@ -11,7 +11,7 @@ def init_pygame(width, height):
     clock = pygame.time.Clock()
     return screen, clock
 
-# Use this to start up the app; will bring the user to the starting menu.
+# Use this to start up the app; will bring the user to the starting menu. 
 def runApp():
     width = 1920
     height = 1080
