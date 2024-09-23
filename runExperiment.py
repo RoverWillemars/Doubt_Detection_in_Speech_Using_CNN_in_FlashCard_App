@@ -54,11 +54,31 @@ while(runApp == True):
     
     # Starting variables for the experiment:
     trial = 0 
+    answer = None # No answer has been given yet.
     font = pygame.font.SysFont(None, 25)
 
     while(experimentOn == True):
-        if trial == 0:
-            screen.fill(bg_colour)
+        print(trial)
+        print(answer)
+        screen.fill(bg_colour)
+        pygame.display.update()
+
+        if trial > 0:
+            stim_path = getStimuli().get_country_path() # determine the path of the stimulus that will be chosen for this trial
+            stim_image = pygame.image.load(f"{stim_path}").convert_alpha() # load the image of the stimulus
+
+            drawStimuli(x = 337, y = 20, country_image = stim_image, screen = screen, scale = 0.5) # Draws stimulus. scale changes the size of the stimulus. However, if you change scale, also change x & y coord
+            
+            pygame.display.update()
+           
+            if answer == None:
+                answer = speech_to_text() # Uses the speech_to_text function in gameHandler to return the transcription of what has been spoken
+                text = font.render(answer, True, (0,0,255)) # Sets the font, maybe place somewhere else? Or is it needed? idk
+                screen.blit(text, (screen_width/2, 500)) # draw the spoken text (transcription) on screen. 
+                pygame.display.update()
+                answer = None
+
+
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT: # This gets called when you press the "x" button on the top right of the window.
@@ -70,21 +90,9 @@ while(runApp == True):
             if keys[pygame.K_ESCAPE]:
                 screenOn = quitExperiment()
                 experimentOn = False
+        
+        trial = trial + 1
 
-            if keys[pygame.K_RETURN]: # If you press enter, continue to next trial. This will need to be changed to a system that checks if user_answer == correct_answer
-                stim_path = getStimuli().get_country_path()
-                stim_image = pygame.image.load(f"{stim_path}").convert_alpha()
-
-                pygame.time.wait(2000)
-
-                drawStimuli(x = 337, y = 0, country_image = stim_image, screen = screen, scale = 0.5) # Draws stimulus. scale changes the size of the stimulus. However, if you change scale, also change x & y coord
-
-                answer = speech_to_text() # Uses the speech_to_text function in gameHandler to return the transcription of what has been spoken
-                text = font.render(answer, True, (0,0,255)) # Sets the font, maybe place somewhere else? Or is it needed? idk
-                screen.blit(text, (screen_width/2, 500)) # draw the spoken text (transcription) on screen. 
-
-                trial = trial + 1 # Currently uses this to keep track of trial, as there is no correct/incorrect of the trial yet.
-                print(trial)
-        pygame.display.update()
+        pygame.time.wait(2000) # wait 2000ms, maybe redundant?
 
 pygame.quit()
