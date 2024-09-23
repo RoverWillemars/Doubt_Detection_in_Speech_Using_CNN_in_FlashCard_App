@@ -58,14 +58,13 @@ while(runApp == True):
     font = pygame.font.SysFont(None, 25)
 
     while(experimentOn == True):
-        print(trial)
-        print(answer)
         screen.fill(bg_colour)
         pygame.display.update()
 
-        if trial > 0:
+        if trial > 0: # kind of redundant to add the trial number, but yeah :^)
             stim_path = getStimuli().get_country_path() # determine the path of the stimulus that will be chosen for this trial
             stim_image = pygame.image.load(f"{stim_path}").convert_alpha() # load the image of the stimulus
+
 
             drawStimuli(x = 337, y = 20, country_image = stim_image, screen = screen, scale = 0.5) # Draws stimulus. scale changes the size of the stimulus. However, if you change scale, also change x & y coord
             
@@ -74,11 +73,20 @@ while(runApp == True):
             if answer == None:
                 answer = speech_to_text() # Uses the speech_to_text function in gameHandler to return the transcription of what has been spoken
                 text = font.render(answer, True, (0,0,255)) # Sets the font, maybe place somewhere else? Or is it needed? idk
-                screen.blit(text, (screen_width/2, 500)) # draw the spoken text (transcription) on screen. 
+                screen.blit(text, (screen_width/2, 500)) # draw the spoken text (transcription) on screen. in the brackets are the x&y coordinates.
+                pygame.display.update()
+
+                user_feedback = check_response(stim_path, answer) # check_response returns True or False depending on if the user's response was correct.
+
+                pygame.time.wait(1000)
+
+                if user_feedback == True:
+                    pygame.draw.circle(screen, (0,128,0), (screen_width/2, screen_height/2), 10)
+                else:
+                    pygame.draw.circle(screen, (128,0,0), (screen_width/2, screen_height/2), 10)
+
                 pygame.display.update()
                 answer = None
-
-
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT: # This gets called when you press the "x" button on the top right of the window.

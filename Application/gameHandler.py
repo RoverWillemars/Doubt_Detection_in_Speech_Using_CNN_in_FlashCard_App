@@ -73,7 +73,7 @@ class drawStimuli():
 # This class should be used to determine what the next stimuli would be. Make it based on the Slimstampen ROF variable. Currently just does it randomly.
 class getStimuli():
     def __init__(self):
-        self.stim_countries = ["afg", "arg", "bel"] # saf = south africa. Would be nice to implement the json file here
+        self.stim_countries = ["Afghanistan", "Argentina", "Belgium"] # saf = south africa. Would be nice to implement the json file here
 
     def get_country_path(self):
         selected_country = random.choice(self.stim_countries)
@@ -92,3 +92,18 @@ def speech_to_text():
         return f"Answer: {r.recognize_google(audio)}"
     except sr.UnknownValueError:
         return f"No words could be analysed from your speech"
+    
+# This function uses the name of the file e.g. Afghanistan.png to check if the answer is correct. This saves us from having to save the right answers somewhere. That is why 
+# The stimulus path is needed as a parameter of the function. Fortunately, in the game, the stim_path is also being used to load the image, making it easy to compare :D
+def check_response(stim_path, user_response):
+    split_path = stim_path.split("\\") # Splits the path e.g. \User\Documents\Picture.png into a list of 3 elements: "User", "Documents" and "Picture.png"
+    last_element = split_path[-1] # Takes the last elements e.g. "Picture.png"
+    split_png = last_element.split(".") # splits "Picture.png" into "Picture" and "png"
+    correct_answer = split_png[0] # takes first element "Picture"
+
+    # If the user_response is part of the file's country name (e.g. Afghanistan.png = Afghanistan), then return True. Otherwise False. 
+    # This system should probably be made more fool proof. As certain countries (e.g. Chile) sounds like Chilli, which would be answered as incorrect. What can we do against this?
+    if correct_answer in user_response:
+        return True
+    else:
+        return False
