@@ -1,4 +1,4 @@
-# This file should be used to run the application.
+# This file should be used to run the application. 
 import pygame
 import os
 
