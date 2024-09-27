@@ -1,6 +1,18 @@
 import pygame
 import random
 import speech_recognition as sr
+import os
+import time
+from pathlib import Path
+
+from slimstampen.spacingmodel import *
+
+images_path = "Images/Country_Outlines"
+country_files = [f for f in os.listdir(images_path)]
+random.shuffle(country_files)
+
+def getCurrentTime():
+	return round(time.time()*1000)
 
 # Initialize the window
 def init_pygame(width, height):
@@ -71,13 +83,38 @@ class drawStimuli():
         screen.blit(self.country_image, (self.rect.x, self.rect.y)) # draw stimuli
 
 # This class should be used to determine what the next stimuli would be. Make it based on the Slimstampen ROF variable. Currently just does it randomly.
-class getStimuli():
+class MemoryModel():
     def __init__(self):
-        self.stim_countries = ["Afghanistan", "Albania", "Algeria", "Andorra", "Argentina", "Armenia", "Aruba", "Australia", "Austria", "Bangladesh", "Belgium", "Canada", "Germany", "Iceland", "SouthAfrica"] # saf = south africa. Would be nice to implement the json file here
+        # Initiate spacing model
+        self.model = SpacingModel()
+        self.current_fact = None
+        self.start_time = None
+        self.new_fact = None
+        
+        # Initiate countries
+        self.stim_countries = {}
+        for file in country_files:
+            self.stim_countries[Path(file).stem] = file
+        
+        # Initiate model facts
+        for idx in range(len(self.stim_countries)):
+            country = list(self.stim_countries.keys())[idx]
+            self.model.add_fact(Fact(idx+1, country, country.lower()))
+    
+    # Determines the next country stimulus
+    def next_country(self):
+        self.start_time = getCurrentTime()
+        self.current_fact, self.new_fact = self.model.get_next_fact(current_time = self.start_time)
+        return self.current_fact.question
 
-    def get_country_path(self):
-        selected_country = random.choice(self.stim_countries)
-        return f".\Images\Country_Outlines\{selected_country}.png" # returns the directory of the country.
+    # Returns image path for a given country
+    def get_country_file_path(self, country):
+        return os.path.join(images_path, self.stim_countries[country])
+    
+    # Returns response
+    def give_answer(self, correct):
+        rt = getCurrentTime() - self.start_time
+        self.model.register_response(Response(self.current_fact, self.start_time, rt, correct))
     
 def speech_to_text():
     try:
@@ -86,12 +123,9 @@ def speech_to_text():
         with mic as source:
             r.adjust_for_ambient_noise(source)
             audio = r.listen(source)
-        
-        
-            
-        return f"Answer: {r.recognize_google(audio)}"
+        return r.recognize_google(audio)
     except sr.UnknownValueError:
-        return f"No words could be analysed from your speech"
+        return "N/A"
 
 #def determineUncertainty(): # Create a function that returns a number for the uncertainty of the answer depending on a fast fourier transform.
 

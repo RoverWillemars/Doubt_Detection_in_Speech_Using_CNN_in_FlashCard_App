@@ -7,7 +7,6 @@ Fact = namedtuple("Fact", "fact_id, question, answer")
 Response = namedtuple("Response", "fact, start_time, rt, correct")
 Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 
-
 class SpacingModel(object):
 
     # Model constants
