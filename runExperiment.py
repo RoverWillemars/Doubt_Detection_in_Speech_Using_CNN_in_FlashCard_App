@@ -4,7 +4,7 @@ import os
 
 from Application.gameHandler import *
 
-# os.chdir("./user-modelling-project-neural-navigators/")
+os.chdir("./user-modelling-project-neural-navigators/")
 
 # Setting basic variables
 screen_width = 1024
