@@ -73,7 +73,7 @@ class drawStimuli():
 # This class should be used to determine what the next stimuli would be. Make it based on the Slimstampen ROF variable. Currently just does it randomly.
 class getStimuli():
     def __init__(self):
-        self.stim_countries = ["Afghanistan", "Albania", "Algeria", "Andorra", "Argentina", "Armenia", "Belgium"] # saf = south africa. Would be nice to implement the json file here
+        self.stim_countries = ["Afghanistan", "Albania", "Algeria", "Andorra", "Argentina", "Armenia", "Aruba", "Australia", "Austria", "Bangladesh", "Belgium", "Canada", "Germany", "Iceland", "SouthAfrica"] # saf = south africa. Would be nice to implement the json file here
 
     def get_country_path(self):
         selected_country = random.choice(self.stim_countries)

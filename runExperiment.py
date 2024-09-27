@@ -61,6 +61,8 @@ while(runApp == True):
         screen.fill(bg_colour)
         pygame.display.update()
 
+        # add a system that introduces new facts.
+
         if trial > 0: # kind of redundant to add the trial number, but yeah :^)
             stim_path = getStimuli().get_country_path() # determine the path of the stimulus that will be chosen for this trial
             stim_image = pygame.image.load(f"{stim_path}").convert_alpha() # load the image of the stimulus
