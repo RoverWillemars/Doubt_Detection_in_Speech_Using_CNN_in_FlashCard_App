@@ -49,6 +49,53 @@ def plot_f0(file):
     plt.show()
 
 
+def plot_pairwise_combinations_in_grid(df, label_col='Doubt', n_cols=3):
+    # get the list of numeric columns (excluding the doubt dummy)
+    numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
+
+    # collect pairwise combinations
+    #combinations = list(itertools.combinations(numeric_columns + [label_col], 2))
+    combinations = list(itertools.combinations(numeric_columns, 2))
+
+    # set the number of rows based
+    n_rows = int(np.ceil(len(combinations) / n_cols))
+
+    # create subplots grid
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 5))
+    axes = axes.flatten()  # Flatten the grid of axes for easy indexing
+
+    for i, (x_col, y_col) in enumerate(combinations):
+        ax = axes[i]  # Get the current axis
+
+        if x_col == label_col or y_col == label_col:
+            # one of the variables is the dummy variable, create a boxplot
+            variable_col = x_col if y_col == label_col else y_col
+            sns.boxplot(x=df[label_col], y=df[variable_col], ax=ax, palette=['green', 'red'])
+            ax.set_title(f'{variable_col} distribution for Confident (0) and Doubtful (1)')
+            ax.set_xlabel('Doubt (0 = Confident, 1 = Doubtful)')
+            ax.set_ylabel(variable_col)
+
+        else:
+            # create scatter plot for confident and doubtful
+            confident_data = df[df[label_col] == 0]
+            doubtful_data = df[df[label_col] == 1]
+
+            ax.scatter(confident_data[x_col], confident_data[y_col], color='green', label='Confident', alpha=0.7)
+            ax.scatter(doubtful_data[x_col], doubtful_data[y_col], color='red', label='Doubtful', alpha=0.7)
+
+            ax.set_xlabel(x_col)
+            ax.set_ylabel(y_col)
+            ax.set_title(f'{x_col} vs {y_col}')
+            ax.legend()
+
+    # hide any unused subplots
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    plt.show()
+
+
 # Function to create pairwise scatter plots for all variable combinations
 def plot_pairwise_combinations(df, label_col='Doubt'):
     # Get the list of numeric columns (excluding the doubt dummy)
@@ -171,3 +218,4 @@ both_df = pd.concat([confident_df, doubtful_df])
 
 # plot
 plot_pairwise_combinations(both_df, "Doubt")
+plot_pairwise_combinations_in_grid(both_df, "Doubt", 3)
