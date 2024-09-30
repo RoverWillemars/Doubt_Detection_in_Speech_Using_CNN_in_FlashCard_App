@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "D:/Studie/User Modelling/user-modelling-project-neural-navigators"
+set experiment_path "C:\\Users\\Rover\\user-modelling-project-neural-navigators"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -83,9 +83,11 @@ define inline_script present_trial
 	prompt = next_fact.question
 	answer = next_fact.answer
 	
+	stim_scale = 0.5
+	
 	# Show prompt
 	my_canvas = Canvas()
-	my_canvas.image(prompt, scale=0.3, y=-200)
+	my_canvas.image(prompt, scale=stim_scale, y=-200)
 	my_canvas.text("Press Space to start talking", font_size = 20, color = "black")
 	if new:
 		my_canvas.text(answer, y = 50, font_size = 20, color = "black")
@@ -106,7 +108,7 @@ define inline_script present_trial
 	
 			# Wait for the recorder to get ready
 			my_canvas.clear()
-			my_canvas.image(prompt, scale=0.3, y=-200)
+			my_canvas.image(prompt, scale=stim_scale, y=-200)
 			my_canvas.text("Wait...", font_size = 20, color = "red")
 			if new:
 				my_canvas.text(answer, y = 50, font_size = 20, color = "black")
@@ -122,7 +124,7 @@ define inline_script present_trial
 	
 		# Show that the recording has started
 		my_canvas.clear()
-		my_canvas.image(prompt, scale=0.3, y=-200)
+		my_canvas.image(prompt, scale=stim_scale, y=-200)
 		my_canvas.text("Start talking...", font_size = 20, color = "green")
 		if new:
 			my_canvas.text(answer, y = 50, font_size = 20, color = "black")
@@ -242,6 +244,7 @@ define inline_script slimstampen_setup
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
 	# ------ MAKE SURE THIS DIRECTORY CONTAINS ONLY THE REQUIRED IMAGES ------
+	#images_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators\\Images\\Country_Outlines"
 	images_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators\\Images\\Country_Outlines"
 	
 	def loadImages():

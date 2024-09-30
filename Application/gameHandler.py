@@ -4,7 +4,8 @@ import speech_recognition as sr
 import os
 import time
 from pathlib import Path
-
+os.chdir("./user-modelling-project-neural-navigators/")
+#from slimstampen.spacingmodel import *
 from slimstampen.spacingmodel import *
 
 images_path = "Images/Country_Outlines"
