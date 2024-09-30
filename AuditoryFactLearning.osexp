@@ -83,14 +83,14 @@ define inline_script present_trial
 	prompt = next_fact.question
 	answer = next_fact.answer
 	
-	stim_scale = 0.5
+	stim_scale = 0.7
 	
 	# Show prompt
 	my_canvas = Canvas()
 	my_canvas.image(prompt, scale=stim_scale, y=-200)
-	my_canvas.text("Press Space to start talking", font_size = 20, color = "black")
+	my_canvas.text("Press Space to start talking", y = 100, font_size = 20, color = "black")
 	if new:
-		my_canvas.text(answer, y = 50, font_size = 20, color = "black")
+		my_canvas.text(answer, y = 150, font_size = 20, color = "black")
 	my_canvas.prepare()
 	my_canvas.show()
 	
@@ -109,9 +109,9 @@ define inline_script present_trial
 			# Wait for the recorder to get ready
 			my_canvas.clear()
 			my_canvas.image(prompt, scale=stim_scale, y=-200)
-			my_canvas.text("Wait...", font_size = 20, color = "red")
+			my_canvas.text("Wait...", y = 100, font_size = 20, color = "red")
 			if new:
-				my_canvas.text(answer, y = 50, font_size = 20, color = "black")
+				my_canvas.text(answer, y = 150, font_size = 20, color = "black")
 			my_canvas.prepare()
 			my_canvas.show()
 			break
@@ -125,9 +125,9 @@ define inline_script present_trial
 		# Show that the recording has started
 		my_canvas.clear()
 		my_canvas.image(prompt, scale=stim_scale, y=-200)
-		my_canvas.text("Start talking...", font_size = 20, color = "green")
+		my_canvas.text("Start talking...", y = 100, font_size = 20, color = "green")
 		if new:
-			my_canvas.text(answer, y = 50, font_size = 20, color = "black")
+			my_canvas.text(answer, y = 150, font_size = 20, color = "black")
 		my_canvas.prepare()
 		my_canvas.show()
 	
@@ -142,11 +142,14 @@ define inline_script present_trial
 		keyboard_response = r.recognize_google(audio).lower()
 	except sr.UnknownValueError:
 		print("Could not understand audio")
+		keyboard_response = "Could not understand audio"
 	except sr.RequestError as e:
 		print("Could not request results from Google:" + e)
+		keyboard_response = "Could not request results from Google"
 	
-	# Check if the response is correct
-	correct = keyboard_response == answer
+	# Check if the response is correct | Note: Would be nice if we can somehow include similar words. If it's too complicated, scrap idea.
+	# jellyfish library can check if a response is similar. e.g. chilli, chilly, chile. 
+	correct = answer in keyboard_response
 	
 	# -----------------------
 	# - Extracting features -
@@ -185,9 +188,9 @@ define inline_script present_trial
 	
 	# Show feedback
 	feedback_color = "green" if correct else "red"
-	my_canvas.text(keyboard_response, y = 100, color = feedback_color)
+	my_canvas.text(keyboard_response, y = 200, color = feedback_color)
 	if not correct:
-		my_canvas.text(answer, y = 150, color = "black")
+		my_canvas.text(answer, y = 250, color = "black")
 	my_canvas.prepare()
 	my_canvas.show()
 	clock.sleep(var.feedback_duration)
@@ -244,8 +247,8 @@ define inline_script slimstampen_setup
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
 	# ------ MAKE SURE THIS DIRECTORY CONTAINS ONLY THE REQUIRED IMAGES ------
-	#images_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators\\Images\\Country_Outlines"
-	images_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators\\Images\\Country_Outlines"
+	images_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators\\Images\\Country_Outlines"
+	#images_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators\\Images\\Country_Outlines"
 	
 	def loadImages():
 	    images = {}
@@ -523,7 +526,7 @@ define sequence trial_sequence
 
 define loop while_there_is_time_left
 	set source table
-	set repeat 5
+	set repeat 35
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
