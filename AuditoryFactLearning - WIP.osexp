@@ -1,0 +1,587 @@
+---
+API: 3
+OpenSesame: 4.0.24
+Platform: nt
+---
+set width 1024
+set uniform_coordinates yes
+set title "SlimStampen example"
+set subject_parity even
+set subject_nr 0
+set start experiment
+set sound_sample_size -16
+set sound_freq 48000
+set sound_channels 2
+set sound_buf_size 1024
+set sampler_backend psycho
+set round_decimals 2
+set mouse_backend psycho
+set keyboard_backend psycho
+set height 768
+set fullscreen no
+set form_clicks no
+set foreground white
+set font_underline no
+set font_size 18
+set font_italic False
+set font_family mono
+set font_bold False
+set experiment_path "C:/Users/Rover/user-modelling-project-neural-navigators"
+set disable_garbage_collection False
+set description "The main experiment item"
+set coordinates uniform
+set compensation 0
+set color_backend psycho
+set clock_backend psycho
+set canvas_backend psycho
+set background "#fcf7f0"
+
+define sequence experiment
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run slimstampen_setup always
+	run instructions always
+	run learning_session_setup always
+	run while_there_is_time_left always
+	run save_data always
+
+define sketchpad instructions
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Instructions go here. Press any key to begin." x=0 y=0 z_index=0
+
+define inline_script learning_session_setup
+	set description "Executes Python code"
+	___run__
+	# Start the clock
+	var.session_start_time = clock.time()
+	
+	# Session will run until time_up == True
+	var.time_up = True
+	
+	# Keep track of trial number
+	var.trial_num = 1
+	
+	# Settings
+	var.session_duration = 10000
+	var.feedback_duration = 800
+	var.inter_trial_interval = 200
+	__end__
+	set _prepare ""
+
+define inline_script present_trial
+	set description "Executes Python code"
+	___run__
+	import speech_recognition as sr
+	import librosa
+	import numpy as np
+	
+	trial_start_time = clock.time()
+	
+	# Get next fact from the model
+	next_fact, new = m.get_next_fact(current_time = trial_start_time)
+	prompt = next_fact.question
+	answer = next_fact.answer
+	
+	stim_scale = 0.7 #stimuli are 490x490 pixels at .7x scale
+	
+	my_canvas = Canvas()
+	
+	basicUIfeatures(my_canvas) #defined in 'prepare'
+	#Show prompt:
+	my_canvas.image(prompt, scale=stim_scale, y=-200)
+	my_canvas.text("Press Space to start talking", y=100, font_size=20, color="black")
+	if new:
+		my_canvas.text(answer, y=150, font_size=20, color="black")
+	my_canvas.prepare()
+	my_canvas.show()
+	
+	# Listen for keyboard input
+	my_keyboard = Keyboard()
+	rt = float("inf")
+	
+	while True:
+		key, time = my_keyboard.get_key()
+	
+		if key == "space":
+			# When the spacebar is pressed,
+			# the response time is determined
+			rt = clock.time() - trial_start_time
+	
+			# Wait for the recorder to get ready
+			my_canvas.clear()
+			basicUIfeatures(my_canvas)
+			my_canvas.image(prompt, scale=stim_scale, y=-200)
+			my_canvas.text("Wait...", y = 100, font_size = 20, color = "red")
+			if new:
+				my_canvas.text(answer, y = 150, font_size = 20, color = "black")
+			my_canvas.prepare()
+			my_canvas.show()
+			break
+	
+	# Record audio
+	r = sr.Recognizer()
+	with sr.Microphone() as source:
+		r.adjust_for_ambient_noise(source)
+		print("Start talking")
+	
+		# Show that the recording has started
+		my_canvas.clear()
+		basicUIfeatures(my_canvas)
+		my_canvas.image(prompt, scale=stim_scale, y=-200)
+		my_canvas.text("Start talking...", y = 100, font_size = 20, color = "green")
+		if new:
+			my_canvas.text(answer, y = 150, font_size = 20, color = "black")
+		my_canvas.prepare()
+		my_canvas.show()
+	
+		audio = r.listen(source)
+		
+		# Temporarily save audio as wav file (for feature extraction) Gets saved in the working directory of OpenSesame:
+		# \Program Files (x86)\OpenSesame
+		with open("audio.wav", "wb") as f:
+			f.write(audio.get_wav_data())
+	
+	# Perform speech recognition
+	try:
+		keyboard_response = r.recognize_google(audio).lower()
+	except sr.UnknownValueError:
+		print("Could not understand audio")
+		keyboard_response = "Could not understand audio"
+	except sr.RequestError as e:
+		print("Could not request results from Google:" + e)
+		keyboard_response = "Could not request results from Google"
+	
+	# Check if the response is correct | Note: Would be nice if we can somehow include similar words. If it's too complicated, scrap idea.
+	# jellyfish library can check if a response is similar. e.g. chilli, chilly, chile. Bhutan, put on
+	correct = answer in keyboard_response
+	
+	# -----------------------
+	# - Extracting features -
+	# -----------------------
+	
+	y, samp_rate = librosa.load("audio.wav")
+	
+	# Extract pitch using pyin (better for single pitch)
+	f0,voiced_flag, voiced_probs = librosa.pyin(y, \
+		sr=samp_rate,
+		fmin=librosa.note_to_hz('C2'),
+		fmax=librosa.note_to_hz('C7')) 
+	
+	# Extract volume (RMS energy)
+	rms = librosa.feature.rms(y=y)[0]
+	
+	# calculate mean and deviation from pitch
+	f0_mean = np.nanmean(f0)
+	f0_sd = np.nanstd(f0)
+	f0_CoV = f0_sd / f0_mean
+	    
+	# calculate mean and deviation from volume
+	volume_mean = np.mean(rms)
+	volume_sd = np.nanstd(rms)
+	volume_CoV = volume_sd /volume_mean
+	
+	# calculate jitter
+	jitter = np.mean(np.abs(np.diff(f0[f0 > 0])))
+	jitter_percentage = (jitter / np.mean(f0[f0 > 0])) * 100
+	
+	# -----------------------
+	
+	# Log response
+	response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage)
+	m.register_response(response) 
+	
+	# Show feedback
+	feedback_color = "green" if correct else "red"
+	my_canvas.text(keyboard_response, y = 200, color = feedback_color)
+	if not correct:
+		my_canvas.text(answer, y = 250, color = "black")
+	my_canvas.prepare()
+	my_canvas.show()
+	clock.sleep(var.feedback_duration)
+	
+	# Ask participant if the response was doubtful/confident. This still had to be added to the functions to clean up this file.
+	my_canvas.clear()
+	my_canvas.image(prompt, scale=stim_scale, y=-200)
+	my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
+	my_canvas.text("Press \"Space\" for confident", y = 150, font_size = 20, color = "black")
+	my_canvas.text("and \"z\" key for doubtful.", y = 200, font_size = 20, color = "black")
+	my_canvas.prepare()
+	my_canvas.show()
+	
+	# Lock user in this loop till they respond with "space" or "z" key.
+	while True:
+		# Get keypress
+		key, time = my_keyboard.get_key()
+		
+		if key == "space":
+			doubt = "confident"
+			break
+		elif key == "z":
+			doubt = "doubt"
+			break
+	
+	# save the audio response into the corresponding folder. 
+	splitClassesClasses(y, answer, doubt, samp_rate) 
+	
+	# Clear the screen between trials
+	my_canvas.clear()
+	my_canvas.prepare()
+	my_canvas.show()
+	clock.sleep(var.inter_trial_interval)
+	
+	# Check if time is up
+	if clock.time() - var.session_start_time >= var.session_duration:
+		var.time_up = True
+	
+	# Increment trial number
+	var.trial_num += 1
+	__end__
+	___prepare__
+	import soundfile as sf
+	
+	def basicUIfeatures(canvas):
+	    canvas['stimulus_box_shadow'] = Rect(x=-299, y=-544, w=603, h=603, color="black", fill=True)
+	    canvas['stimulus_box'] = Rect(x=-300, y=-545, w=600, h=600, color="white", fill=True)
+	    canvas['response_box_shadow'] = Rect(x=-149, y=171, w=303, h=63, color="black", fill=True)
+	    canvas['response_box'] = Rect(x=-150, y=170, w=300, h=60, color="white", fill=True)
+	        
+	def askConfidence(canvas):
+	    my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
+	    
+	def splitClasses(audio_data, transcription, sample_type, sample_rate): # sample_type = doubt or confident
+	    sf.write(f"{main_dir}\\speech_recognition\\recordingsV2\\{sample_type}\\{transcription}_{sample_type}.wav", audio_data, sample_rate)
+	
+	    
+	__end__
+
+define inline_script save_data
+	set description "Executes Python code"
+	___run__
+	# Write the SlimStampen data to the OpenSesame log file
+	dat = m.export_data()
+	log.write(dat)
+	__end__
+	set _prepare ""
+
+define inline_script slimstampen_setup
+	set description "Executes Python code"
+	___run__
+	m = SpacingModel()
+	
+	countries = loadImages()
+	
+	facts = []
+	for idx, name in enumerate(countries.keys()):
+		facts.append(Fact(idx+1, countries[name], name.lower()))
+	
+	for fact in facts:
+		m.add_fact(fact)
+	__end__
+	___prepare__
+	from __future__ import division
+	import math
+	import pandas as pd
+	import os
+	import random
+	from pathlib import Path
+	from collections import namedtuple
+	
+	Fact = namedtuple("Fact", "fact_id, question, answer")
+	Response = namedtuple("Response","fact, start_time, rt, correct, f0_mean, vol_mean, f0_CoV, vol_CoV, jit_perc")
+	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
+	
+	# ------ main_dir IS THE ONLY DIRECTORY YOU HAVE TO CHANGE!!! THE REST ARE LINKED THROUGH THAT ONE ------
+	# ------ MAKE SURE THIS DIRECTORY CONTAINS ONLY THE REQUIRED IMAGES ------
+	main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
+	
+	
+	#--------------------------------------------------------------------------------------------------------
+	images_dir = f"{main_dir}\\Images\\Country_Outlines"
+	
+	def loadImages():
+	    images = {}
+	    image_paths = list(os.listdir(images_dir))
+	    random.shuffle(image_paths)
+	    for img in image_paths:
+	        path = os.path.join(images_dir, img)
+	        name = Path(img).stem
+	        images[name] = path
+	    return images
+	
+	class SpacingModel(object):
+	
+	    # Model constants
+	    LOOKAHEAD_TIME = 15000
+	    FORGET_THRESHOLD = -0.8
+	    DEFAULT_ALPHA = 0.3
+	    C = 0.25
+	    F = 1.0
+	
+	    def __init__(self):
+	        self.facts = []
+	        self.responses = []
+	
+	    def add_fact(self, fact):
+	        # type: (Fact) -> None
+	        """
+	        Add a fact to the list of study items.
+	        """
+	        # Ensure that a fact with this ID does not exist already
+	        if next((f for f in self.facts if f.fact_id == fact.fact_id), None):
+	            raise RuntimeError(
+	                "Error while adding fact: There is already a fact with the same ID: {}. Each fact must have a unique ID".format(fact.fact_id))
+	
+	        self.facts.append(fact)
+	
+	
+	    def register_response(self, response):
+	        # type: (Response) -> None
+	        """
+	        Register a response.
+	        """
+	        # Prevent duplicate responses
+	        if next((r for r in self.responses if r.start_time == response.start_time), None):
+	            raise RuntimeError(
+	                "Error while registering response: A response has already been logged at this start_time: {}. Each response must occur at a unique start_time.".format(response.start_time))
+	
+	        self.responses.append(response)
+	
+	
+	    def get_next_fact(self, current_time):
+	        # type: (int) -> (Fact, bool)
+	        """
+	        Returns a tuple containing the fact that needs to be repeated most urgently and a boolean indicating whether this fact is new (True) or has been presented before (False).
+	        If none of the previously studied facts needs to be repeated right now, return a new fact instead.
+	        """
+	        # Calculate all fact activations in the near future
+	        fact_activations = [(f, self.calculate_activation(current_time + self.LOOKAHEAD_TIME, f)) for f in self.facts]
+	
+	        seen_facts = [(f, a) for (f, a) in fact_activations if a > -float("inf")]
+	        not_seen_facts = [(f, a) for (f, a) in fact_activations if a == -float("inf")]
+	
+	        # Prevent an immediate repetition of the same fact
+	        if len(seen_facts) > 2:
+	            last_response = self.responses[-1]
+	            seen_facts = [(f, a) for (f, a) in seen_facts if f.fact_id != last_response.fact.fact_id]
+	
+	        # Reinforce the weakest fact with an activation below the threshold
+	        seen_facts_below_threshold = [(f, a) for (f, a) in seen_facts if a < self.FORGET_THRESHOLD]
+	        if len(not_seen_facts) == 0 or len(seen_facts_below_threshold) > 0:
+	            weakest_fact = min(seen_facts, key = lambda t: t[1])
+	            return((weakest_fact[0], False))
+	
+	        # If none of the previously seen facts has an activation below the threshold, return a new fact
+	        return((not_seen_facts[0][0], True))
+	
+	
+	    def get_rate_of_forgetting(self, time, fact):
+	        # type: (int, Fact) -> float
+	        """
+	        Return the estimated rate of forgetting of the fact at the specified time
+	        """
+	        encounters = []
+	
+	        responses_for_fact = [r for r in self.responses if r.fact.fact_id == fact.fact_id and r.start_time < time]
+	        alpha = self.DEFAULT_ALPHA
+	
+	        # Calculate the activation by running through the sequence of previous responses
+	        for response in responses_for_fact:
+	            activation = self.calculate_activation_from_encounters(encounters, response.start_time)
+	            encounters.append(Encounter(activation, response.start_time, self.normalise_reaction_time(response), self.DEFAULT_ALPHA))
+	            alpha = self.estimate_alpha(encounters, activation, response, alpha)
+	
+	            # Update decay estimates of previous encounters
+	            encounters = [encounter._replace(decay = self.calculate_decay(encounter.activation, alpha)) for encounter in encounters]
+	
+	        return(alpha)
+	
+	
+	    def calculate_activation(self, time, fact):
+	        # type: (int, Fact) -> float
+	        """
+	        Calculate the activation of a fact at the given time.
+	        """
+	
+	        encounters = []
+	
+	        responses_for_fact = [r for r in self.responses if r.fact.fact_id == fact.fact_id and r.start_time < time]
+	        alpha = self.DEFAULT_ALPHA
+	
+	        # Calculate the activation by running through the sequence of previous responses
+	        for response in responses_for_fact:
+	            activation = self.calculate_activation_from_encounters(encounters, response.start_time)
+	            encounters.append(Encounter(activation, response.start_time, self.normalise_reaction_time(response), self.DEFAULT_ALPHA))
+	            alpha = self.estimate_alpha(encounters, activation, response, alpha)
+	
+	            # Update decay estimates of previous encounters
+	            encounters = [encounter._replace(decay = self.calculate_decay(encounter.activation, alpha)) for encounter in encounters]
+	
+	        return(self.calculate_activation_from_encounters(encounters, time))
+	
+	
+	    def calculate_decay(self, activation, alpha):
+	        # type: (float, float) -> float
+	        """
+	        Calculate activation-dependent decay
+	        """
+	        return self.C * math.exp(activation) + alpha
+	
+	
+	    def estimate_alpha(self, encounters, activation, response, previous_alpha):
+	        # type: ([Encounter], float, Response, float) -> float
+	        """
+	        Estimate the rate of forgetting parameter (alpha) for an item.
+	        """
+	        if len(encounters) < 3:
+	            return(self.DEFAULT_ALPHA)
+	
+	        a_fit = previous_alpha
+	        reading_time = self.get_reading_time(response.fact.question)
+	        estimated_rt = self.estimate_reaction_time_from_activation(activation, reading_time)
+	        est_diff = estimated_rt - self.normalise_reaction_time(response)
+	
+	        if est_diff < 0:
+	            # Estimated RT was too short (estimated activation too high), so actual decay was larger
+	            a0 = a_fit
+	            a1 = a_fit + 0.05
+	        
+	        else:
+	            # Estimated RT was too long (estimated activation too low), so actual decay was smaller
+	            a0 = a_fit - 0.05
+	            a1 = a_fit
+	
+	        # Binary search between previous fit and proposed alpha
+	        for _ in range(6):
+	            # Adjust all decays to use the new alpha
+	            a0_diff = a0 - a_fit
+	            a1_diff = a1 - a_fit
+	            d_a0 = [e._replace(decay = e.decay + a0_diff) for e in encounters]
+	            d_a1 = [e._replace(decay = e.decay + a1_diff) for e in encounters]
+	
+	            # Calculate the reaction times from activation and compare against observed RTs
+	            encounter_window = encounters[max(1, len(encounters) - 5):]
+	            total_a0_error = self.calculate_predicted_reaction_time_error(encounter_window, d_a0, reading_time)
+	            total_a1_error = self.calculate_predicted_reaction_time_error(encounter_window, d_a1, reading_time)
+	
+	            # Adjust the search area based on the lowest total error
+	            ac = (a0 + a1) / 2
+	            if total_a0_error < total_a1_error:
+	                a1 = ac
+	            else:
+	                a0 = ac
+	        
+	        # The new alpha estimate is the average value in the remaining bracket
+	        return((a0 + a1) / 2)
+	
+	
+	    def calculate_activation_from_encounters(self, encounters, current_time):
+	        # type: ([Encounter], int) -> float
+	        included_encounters = [e for e in encounters if e.time < current_time]
+	
+	        if len(included_encounters) == 0:
+	            return(-float("inf"))
+	
+	        return(math.log(sum([math.pow((current_time - e.time) / 1000, -e.decay) for e in included_encounters])))
+	
+	
+	    def calculate_predicted_reaction_time_error(self, test_set, decay_adjusted_encounters, reading_time):
+	        # type: ([Encounter], [Encounter], Fact) -> float
+	        """
+	        Calculate the summed absolute difference between observed response times and those predicted based on a decay adjustment.
+	        """
+	        activations = [self.calculate_activation_from_encounters(decay_adjusted_encounters, e.time - 100) for e in test_set]
+	        rt = [self.estimate_reaction_time_from_activation(a, reading_time) for a in activations]
+	        rt_errors = [abs(e.reaction_time - rt) for (e, rt) in zip(test_set, rt)]
+	        return(sum(rt_errors))
+	
+	
+	    def estimate_reaction_time_from_activation(self, activation, reading_time):
+	        # type: (float, int) -> float
+	        """
+	        Calculate an estimated reaction time given a fact's activation and the expected reading time 
+	        """
+	        return((self.F * math.exp(-activation) + (reading_time / 1000)) * 1000)
+	
+	
+	    def get_max_reaction_time_for_fact(self, fact):
+	        # type: (Fact) -> float
+	        """
+	        Return the highest response time we can reasonably expect for a given fact
+	        """
+	        reading_time = self.get_reading_time(fact.question)
+	        max_rt = 1.5 * self.estimate_reaction_time_from_activation(self.FORGET_THRESHOLD, reading_time)
+	        return(max_rt)
+	
+	
+	    def get_reading_time(self, text):
+	        # type: (str) -> float
+	        """
+	        Return expected reading time in milliseconds for a given string
+	        """
+	        word_count = len(text.split())
+	
+	        if word_count > 1:
+	            character_count = len(text)
+	            return(max((-157.9 + character_count * 19.5), 300))
+	        
+	        return(300)
+	
+	    
+	    def normalise_reaction_time(self, response):
+	        # type: (Response) -> float
+	        """
+	        Cut off extremely long responses to keep the reaction time within reasonable bounds
+	        """
+	        rt = response.rt if response.correct else 60000
+	        max_rt = self.get_max_reaction_time_for_fact(response.fact)
+	        return(min(rt, max_rt))
+	
+	
+	    def export_data(self, path = None):
+	        # type: (str) -> DataFrame
+	        """
+	        Save the response data to the specified csv file, and return a copy of the pandas DataFrame.
+	        If no path is specified, return a CSV-formatted copy of the data instead.
+	        """
+	
+	        def calc_rof(row):
+	            return(self.get_rate_of_forgetting(row["start_time"] + 1, row["fact"]))
+	
+	        dat_resp = pd.DataFrame(self.responses)
+	        dat_facts = pd.DataFrame([r.fact for r in self.responses])
+	        dat = pd.concat([dat_resp, dat_facts], axis = 1)
+	
+	        # Add column for rate of forgetting estimate after each observation
+	        dat["alpha"] = dat.apply(calc_rof, axis = 1)
+	        dat.drop(columns = "fact", inplace = True)
+	
+	        # Add trial number column
+	        dat.index.name = "trial"
+	        dat.index = dat.index + 1
+	
+	        # Save to CSV file if a path was specified, otherwise return the CSV-formatted output
+	        if path is not None:
+	            dat.to_csv(path, encoding="UTF-8")
+	            return(dat)
+	        
+	        return(dat.to_csv())
+	__end__
+
+define sequence trial_sequence
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run present_trial always
+
+define loop while_there_is_time_left
+	set source table
+	set repeat 35
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 1
+	set continuous no
+	set break_if_on_first yes
+	set break_if "[time_up] = yes"
+	setcycle 0 ignore_this_variable 1
+	run trial_sequence
+
