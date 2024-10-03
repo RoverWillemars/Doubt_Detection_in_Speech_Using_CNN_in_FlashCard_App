@@ -190,8 +190,9 @@ define inline_script present_trial
 				waitedTooLong = True
 		
 		error = ""
-		if waitedTooLong:
+		if waitedTooLong: # need to check whether it should be recorded like this
 			error = "Answer took too long"
+			response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan)
 		else:
 			# Save audio as wav file (for feature extraction)
 			with open(file_path_overwrite, "wb") as f:
