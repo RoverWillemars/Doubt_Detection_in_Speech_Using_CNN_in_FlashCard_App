@@ -1,6 +1,6 @@
 ---
 API: 3
-OpenSesame: 4.0.29
+OpenSesame: 4.0.24
 Platform: nt
 ---
 set width 1024
@@ -13,10 +13,10 @@ set sound_sample_size -16
 set sound_freq 48000
 set sound_channels 2
 set sound_buf_size 1024
-set sampler_backend psycho
+set sampler_backend legacy
 set round_decimals 2
-set mouse_backend psycho
-set keyboard_backend psycho
+set mouse_backend legacy
+set keyboard_backend legacy
 set height 768
 set fullscreen no
 set form_clicks no
@@ -26,14 +26,14 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+set experiment_path "C:/Users/remon/OneDrive/Bureaublad/BCN_ReMa2/User_Modelling/GitHub"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
 set compensation 0
-set color_backend psycho
-set clock_backend psycho
-set canvas_backend psycho
+set color_backend legacy
+set clock_backend legacy
+set canvas_backend legacy
 set background "#fcf7f0"
 
 define sequence experiment
@@ -56,7 +56,9 @@ define inline_script learning_session_setup
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	# var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	#var.main_dir = "D:\\Studie\\User-Modelling\\user-modelling-project-neural-navigators"
+	
+	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	
 	# Check each trial manually for doubt
 	var.checkDoubt = True
@@ -88,16 +90,25 @@ define inline_script present_trial
 	import librosa
 	import numpy as np
 	import os
+	import time
 	from pathlib import Path
 	
 	trial_start_time = clock.time()
 	
+	# Determine path of trial info (can be iniated earlier but idc for now)
+	trialInfo_dir = os.path.join(var.main_dir, "participant_data", "trial_info")
+	if not os.path.exists(trialInfo_dir):
+		os.makedirs(trialInfo_dir)
+	
 	# Determine path of recording file
-	audio_dir = os.path.join(var.main_dir, "recordings")
+	audio_dir = os.path.join(var.main_dir,"participant_data", "recordings")
 	if not os.path.exists(audio_dir):
-		os.mkdir(audio_dir)
+		os.makedirs(audio_dir)
 	audio_name = f"subj_{var.subject_nr}_trial_{var.trial_num}.wav"
 	file_path = os.path.join(audio_dir, audio_name)
+	
+	# the files not saved to folder can probably be overwritten all the tiem right, in that case, I make another variable for the .wav file name
+	file_path_overwrite = os.path.join(audio_dir, f"subj_{var.subject_nr}.wav")
 	
 	# Get next fact from the model
 	next_fact, new = m.get_next_fact(current_time = trial_start_time)
@@ -111,162 +122,193 @@ define inline_script present_trial
 	basicUIfeatures(my_canvas) #defined in 'prepare'
 	#Show prompt:
 	my_canvas.image(prompt, scale=stim_scale, y=-200)
-	my_canvas.text("Press Space to start talking", y=100, font_size=20, color="black")
+	if not new:
+		my_canvas.text("Press Space to start talking", y=100, font_size=20, color="black")
 	if new:
+		my_canvas.text("Press Space if you got it", y=100, font_size=20, color="black")
 		my_canvas.text(answer, y=150, font_size=20, color="black")
+		
 	my_canvas.prepare()
 	my_canvas.show()
 	
-	# Listen for keyboard input
-	my_keyboard = Keyboard()
-	rt = float("inf")
-	
-	while True:
-		key, time = my_keyboard.get_key()
-	
-		if key == "space":
-			# When the spacebar is pressed,
-			# the response time is determined
-			rt = clock.time() - trial_start_time
-			break
-	
-	# Record audio
-	r = sr.Recognizer()
-	with sr.Microphone() as source:
-		# r.adjust_for_ambient_noise(source)
-		print("Start talking")
-	
-		# Show that the recording has started
-		my_canvas.clear()
-		basicUIfeatures(my_canvas)
-		my_canvas.image(prompt, scale=stim_scale, y=-200)
-		my_canvas.text("Start talking...", y = 100, font_size = 20, color = "green")
-		if new:
-			my_canvas.text(answer, y = 150, font_size = 20, color = "black")
-		my_canvas.prepare()
-		my_canvas.show()
-		
-		waitedTooLong = False
-		try:
-			audio = r.listen(source, timeout=var.secToStart, phrase_time_limit=var.secToSpeak)
-		except sr.WaitTimeoutError:
-			waitedTooLong = True
-	
-	error = ""
-	if waitedTooLong:
-		error = "Answer took too long"
-	else:
-		# Save audio as wav file (for feature extraction)
-		with open(file_path, "wb") as f:
-			f.write(audio.get_wav_data())
-		
-		# Perform speech recognition
-		print("Speech recognition")
-		try:
-			speech_response = r.recognize_google(audio).lower()
-		except sr.UnknownValueError:
-			print("Could not understand audio")
-			error = "Could not understand audio"
-		except sr.RequestError as e:
-			print("Could not request results from Google:" + e)
-			error = "Could not request results from Google"
-			
-		# -----------------------
-		# - Extracting features -
-		# -----------------------
-		print("Extracting features")
-		y, samp_rate = librosa.load(file_path, sr=None)
-		
-		# Extract pitch using pyin (better for single pitch)
-		f0,voiced_flag, voiced_probs = librosa.pyin(y, \
-			sr=samp_rate,
-			fmin=librosa.note_to_hz('C2'),
-			fmax=librosa.note_to_hz('C7')) 
-		
-		# Extract volume (RMS energy)
-		rms = librosa.feature.rms(y=y)[0]
-		
-		# calculate mean and deviation from pitch
-		f0_mean = np.nanmean(f0)
-		f0_sd = np.nanstd(f0)
-		f0_CoV = f0_sd / f0_mean
-		    
-		# calculate mean and deviation from volume
-		volume_mean = np.mean(rms)
-		volume_sd = np.nanstd(rms)
-		volume_CoV = volume_sd /volume_mean
-		
-		# calculate jitter
-		jitter = np.mean(np.abs(np.diff(f0[f0 > 0])))
-		jitter_percentage = (jitter / np.mean(f0[f0 > 0])) * 100
-		
-		# -----------------------
-	
-	# Check if the response is correct
-	if error == "":
-		correct = checkSimilarity(answer, speech_response)
-	else:
-		correct = False
-	
-	# Log response
-	response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage)
-	#response = Response(next_fact, trial_start_time, rt, correct)
-	m.register_response(response) 
-	
-	# Show feedback
-	feedback_color = "green" if correct else "red"
-	if error == "":
-		my_canvas.text(speech_response, y = 200, color = feedback_color)
-	else:
-		my_canvas.text(error, y = 200, color = feedback_color)
-	if not correct or (correct and answer != speech_response):
-		my_canvas.text(answer, y = 250, color = "black")
-	my_canvas.prepare()
-	my_canvas.show()
-	if new or not correct or (correct and answer != speech_response):
+	if new: # edit Remon
+		time.sleep(1)
 		speakPhrase(answer)
-	clock.sleep(var.feedback_duration)
+		
+		# Listen for keyboard input
+		my_keyboard = Keyboard()
+		rt = float("inf")
+		
+		while True:
+			key, time = my_keyboard.get_key()
+		
+			if key == "space":
+				# When the spacebar is pressed,
+				# the response time is determined
+				rt = clock.time() - trial_start_time
+				break
+		
+		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan) #might want to change what we do with rt here?
+			
+		m.register_response(response) 
 	
-	if var.checkDoubt:
-		# Ask participant if the response was doubtful/confident. This still had to be added to the functions to clean up this file.
-		my_canvas.clear()
-		my_canvas.image(prompt, scale=stim_scale, y=-200)
-		my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
-		my_canvas.text("Press \"Space\" for confident", y = 150, font_size = 20, color = "black")
-		my_canvas.text("and \"z\" key for doubtful.", y = 200, font_size = 20, color = "black")
+	if not new:
+	
+		# Listen for keyboard input
+		my_keyboard = Keyboard()
+		rt = float("inf")
+		
+		while True:
+			key, time = my_keyboard.get_key()
+		
+			if key == "space":
+				# When the spacebar is pressed,
+				# the response time is determined
+				rt = clock.time() - trial_start_time
+				break
+		
+		# Record audio
+		r = sr.Recognizer()
+		with sr.Microphone() as source:
+			# r.adjust_for_ambient_noise(source)
+			print("Start talking")
+		
+			# Show that the recording has started
+			my_canvas.clear()
+			basicUIfeatures(my_canvas)
+			my_canvas.image(prompt, scale=stim_scale, y=-200)
+			my_canvas.text("Start talking...", y = 100, font_size = 20, color = "green")
+			if new:
+				my_canvas.text(answer, y = 150, font_size = 20, color = "black")
+			my_canvas.prepare()
+			my_canvas.show()
+			
+			waitedTooLong = False
+			try:
+				audio = r.listen(source, timeout=var.secToStart, phrase_time_limit=var.secToSpeak)
+			except sr.WaitTimeoutError:
+				waitedTooLong = True
+		
+		error = ""
+		if waitedTooLong:
+			error = "Answer took too long"
+		else:
+			# Save audio as wav file (for feature extraction)
+			with open(file_path_overwrite, "wb") as f:
+				f.write(audio.get_wav_data())
+			
+			# Perform speech recognition
+			print("Speech recognition")
+			try:
+				speech_response = r.recognize_google(audio).lower()
+			except sr.UnknownValueError:
+				print("Could not understand audio")
+				error = "Could not understand audio"
+			except sr.RequestError as e:
+				print("Could not request results from Google:" + e)
+				error = "Could not request results from Google"
+				
+		
+		# Check if the response is correct
+		if error == "":
+			correct = checkSimilarity(answer, speech_response)
+		else:
+			correct = False
+		
+		# Show feedback
+		feedback_color = "green" if correct else "red"
+		if error == "":
+			my_canvas.text(speech_response, y = 200, color = feedback_color)
+		else:
+			my_canvas.text(error, y = 200, color = feedback_color)
+		if not correct or (correct and answer != speech_response):
+			my_canvas.text(answer, y = 250, color = "black")
 		my_canvas.prepare()
 		my_canvas.show()
-		
-		# Lock user in this loop till they respond with "space" or "z" key.
-		while True:
-			# Get keypress
-			key, time = my_keyboard.get_key()
-			
-			if key == "space":
-				doubt = "confident"
-				break
-			elif key == "z":
-				doubt = "doubt"
-				break
-	
-		# Determine "doubt" and "conf" folder
-		doubt_dir = os.path.join(audio_dir, "doubt")
-		conf_dir = os.path.join(audio_dir, "conf")
-		if not os.path.exists(doubt_dir):
-			os.mkdir(doubt_dir)
-		if not os.path.exists(conf_dir):
-			os.mkdir(conf_dir)
+		if not correct or (correct and answer != speech_response): #edit Remon
+			speakPhrase(answer)
+		clock.sleep(var.feedback_duration)
 		
 		if not waitedTooLong:
-			if doubt == "confident":
-				file_path = os.path.join(conf_dir, audio_name)
-			elif doubt == "doubt":
-				file_path = os.path.join(doubt_dir, audio_name)
-			with open(file_path, "wb") as f:
-				f.write(audio.get_wav_data())
+			# -----------------------
+			# - Extracting features -
+			# -----------------------
+			print("Extracting features")
+			y, samp_rate = librosa.load(file_path_overwrite, sr=None)
+			
+			# Extract pitch using pyin (better for single pitch)
+			f0,voiced_flag, voiced_probs = librosa.pyin(y, \
+				sr=samp_rate,
+				fmin=librosa.note_to_hz('C2'),
+				fmax=librosa.note_to_hz('C7')) 
+			
+			# Extract volume (RMS energy)
+			rms = librosa.feature.rms(y=y)[0]
+			
+			# calculate mean and deviation from pitch
+			f0_mean = np.nanmean(f0)
+			f0_sd = np.nanstd(f0)
+			f0_CoV = f0_sd / f0_mean
+			    
+			# calculate mean and deviation from volume
+			volume_mean = np.mean(rms)
+			volume_sd = np.nanstd(rms)
+			volume_CoV = volume_sd /volume_mean
+			
+			# calculate jitter
+			jitter = np.mean(np.abs(np.diff(f0[f0 > 0])))
+			jitter_percentage = (jitter / np.mean(f0[f0 > 0])) * 100
+			
+			# -----------------------
+		
+		# Log response
+		response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage)
+		m.register_response(response) 
+		
+		
+		if var.checkDoubt:
+			# Ask participant if the response was doubtful/confident. This still had to be added to the functions to clean up this file.
+			my_canvas.clear()
+			my_canvas.image(prompt, scale=stim_scale, y=-200)
+			my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
+			my_canvas.text("Press \"Space\" for confident", y = 150, font_size = 20, color = "black")
+			my_canvas.text("and \"z\" key for doubtful.", y = 200, font_size = 20, color = "black")
+			my_canvas.prepare()
+			my_canvas.show()
+			
+			# Lock user in this loop till they respond with "space" or "z" key.
+			while True:
+				# Get keypress
+				key, time = my_keyboard.get_key()
+				
+				if key == "space":
+					doubt = "confident"
+					break
+				elif key == "z":
+					doubt = "doubt"
+					break
+		
+			# Determine "doubt" and "conf" folder
+			doubt_dir = os.path.join(audio_dir, "doubt")
+			conf_dir = os.path.join(audio_dir, "conf")
+			if not os.path.exists(doubt_dir):
+				os.mkdir(doubt_dir)
+			if not os.path.exists(conf_dir):
+				os.mkdir(conf_dir)
+			
+			if not waitedTooLong:
+				if doubt == "confident":
+					file_path = os.path.join(conf_dir, audio_name)
+				elif doubt == "doubt":
+					file_path = os.path.join(doubt_dir, audio_name)
+				with open(file_path, "wb") as f:
+					f.write(audio.get_wav_data())
 	
 	# save the audio response into the corresponding folder. 
 	#splitClasses(y, answer, doubt, samp_rate) 
+	
+	# this logs the data after every trial, instead of just the end
+	dat = m.export_data(os.path.join(trialInfo_dir, f"subj_{var.subject_nr}.csv"))
 	
 	# Clear the screen between trials
 	my_canvas.clear()
@@ -307,6 +349,7 @@ define inline_script present_trial
 	
 	def speakPhrase(text):
 	    engine = pyttsx3.init("sapi5")
+	    engine.setProperty('rate', 140)
 	    print()
 	    engine.say(text)
 	    try:
@@ -334,8 +377,8 @@ define inline_script save_data
 	set description "Executes Python code"
 	___run__
 	# Write the SlimStampen data to the OpenSesame log file
-	dat = m.export_data()
-	log.write(dat)
+	#dat = m.export_data()
+	#log.write(dat)
 	__end__
 	set _prepare ""
 
@@ -645,7 +688,6 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
-	set source_file ""
 	set source table
 	set repeat 35
 	set order random
