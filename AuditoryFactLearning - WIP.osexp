@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "C:/Users/Rover/user-modelling-project-neural-navigators"
+set experiment_path "C:/Users/remon/OneDrive/Bureaublad/BCN_ReMa2/User_Modelling/GitHub"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -55,10 +55,9 @@ define inline_script learning_session_setup
 	set _run ""
 	___prepare__
 	# Main directory, containing all necessary files and folder
-	var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
+	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
 	#var.main_dir = "D:\\Studie\\User-Modelling\\user-modelling-project-neural-navigators"
-	
-	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	
 	# Check each trial manually for doubt
 	var.checkDoubt = True
@@ -90,7 +89,7 @@ define inline_script present_trial
 	import librosa
 	import numpy as np
 	import os
-	import time
+	import time as time_lib # lazy work around for variable "time"
 	#from pathlib import Path #redundant
 	
 	trial_start_time = clock.time()
@@ -132,8 +131,9 @@ define inline_script present_trial
 	my_canvas.show()
 	
 	if new: # edit Remon
-		time.sleep(1)
+		time_lib.sleep(0.5)
 		speakPhrase(answer)
+		time_lib.sleep(0.5)
 		
 		# Listen for keyboard input
 		my_keyboard = Keyboard()
@@ -276,6 +276,8 @@ define inline_script present_trial
 			my_canvas.text("and \"z\" key for doubtful.", y = 200, font_size = 20, color = "black")
 			my_canvas.prepare()
 			my_canvas.show()
+			
+			time_lib.sleep(1.5)
 			
 			# Lock user in this loop till they respond with "space" or "z" key.
 			while True:
