@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+set experiment_path "C:/Users/Rover/user-modelling-project-neural-navigators"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -89,9 +89,9 @@ define inline_script learning_session_setup
 	__end__
 	___prepare__
 	# Main directory, containing all necessary files and folder
-	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
+	var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
 	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
-	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	
 	# Check each trial manually for doubt
 	var.checkDoubt = True
@@ -197,7 +197,6 @@ define inline_script present_questions
 	        if q_index >= len(list_of_questions):
 	            show_demo = False
 	            
-	        #should log the response here.
 	        answer_list.append(answer)
 	        answer = ""
 	        demo_canvas.clear()
@@ -257,7 +256,7 @@ define inline_script present_trial
 	prompt = next_fact.question
 	answer = next_fact.answer
 	
-	stim_scale = 0.4 #stimuli are 280x280 pixels at .4x scale. sreen size is 1024x768
+	stim_scale = 0.35 #stimuli are 280x280 pixels at .4x scale. sreen size is 1024x768
 	
 	my_canvas = Canvas()
 	
@@ -372,14 +371,14 @@ define inline_script present_trial
 				my_canvas.text(speech_response, y = 70, color = feedback_color)
 			elif not correct:
 				my_canvas.text(speech_response, y = 70, color = feedback_color)
-				my_canvas.rect(x=-149, y=-9, w=303, h=53, color="black", fill=True)
-				my_canvas.rect(x=-150, y=-10, w=300, h=50, color="white", fill=True)
-				my_canvas.text(answer , y = 10, color = "black")	
+				my_canvas.rect(x=-149, y=97, w=303, h=53, color="black", fill=True)
+				my_canvas.rect(x=-150, y=95, w=300, h=50, color="white", fill=True)
+				my_canvas.text(answer , y = 120, color = "black")	
 		else:
 			my_canvas.text(error, y = 70, color = feedback_color)
-			my_canvas.rect(x=-149, y=-9, w=303, h=53, color="black", fill=True)
-			my_canvas.rect(x=-150, y=-10, w=300, h=50, color="white", fill=True)
-			my_canvas.text(answer , y = 10, color = "black")
+			my_canvas.rect(x=-149, y=97, w=303, h=53, color="black", fill=True)
+			my_canvas.rect(x=-150, y=95, w=300, h=50, color="white", fill=True)
+			my_canvas.text(answer , y = 120, color = "black")
 			
 		my_canvas.prepare()
 		my_canvas.show()
@@ -435,7 +434,7 @@ define inline_script present_trial
 			if not waitedTooLong:
 				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, doubt)
 			elif waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
 		
 		# if there's no doubt check then
 		elif not var.checkDoubt:
@@ -590,8 +589,8 @@ define inline_script present_trial
 	    engine.runAndWait()
 	
 	def basicUIfeatures(canvas, response_box = True): #280x280 pixels at .4x scale. sreen size is 1024x768
-	    canvas['stimulus_box_shadow'] = Rect(x=-147, y=-371, w=300, h=300, color="black", fill=True)
-	    canvas['stimulus_box'] = Rect(x=-150, y=-374, w=300, h=300, color="white", fill=True)
+	    canvas['stimulus_box_shadow'] = Rect(x=-147, y=-320, w=300, h=300, color="black", fill=True) #371 & 374
+	    canvas['stimulus_box'] = Rect(x=-150, y=-324, w=300, h=300, color="white", fill=True)
 	    if response_box == True:
 	        canvas['response_box_shadow'] = Rect(x=-149, y=51, w=303, h=53, color="black", fill=True)
 	        canvas['response_box'] = Rect(x=-150, y=50, w=300, h=50, color="white", fill=True)
