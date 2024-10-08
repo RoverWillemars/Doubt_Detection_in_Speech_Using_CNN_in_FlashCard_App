@@ -92,6 +92,8 @@ define inline_script present_trial
 	
 	trial_start_time = clock.time()
 	
+	training_folders = createFolders()
+	
 	# Determine path of trial info (can be iniated earlier but idc for now)
 	trialInfo_dir = os.path.join(var.main_dir, "participant_data", "trial_info")
 	if not os.path.exists(trialInfo_dir):
@@ -274,10 +276,25 @@ define inline_script present_trial
 		
 		# Show doubt/confident prompt
 		if var.checkDoubt:
-			doubtPrompt(my_canvas, my_keyboard, audio_name, audio_dir, waitedTooLong)
+			doubt = doubtPrompt(my_canvas, my_keyboard, audio_name, audio_dir, waitedTooLong)
 	
 		# this logs the data after every trial, instead of just the end
 		dat = m.export_data(os.path.join(trialInfo_dir, f"subj_{var.subject_nr}.csv"))
+		
+		# Save to training data
+		if not waitedTooLong and var.checkDoubt:
+			if doubt == "confident" and correct:
+				file_path = os.path.join(training_folders["conf_corr"], audio_name)
+			elif doubt == "confident" and not correct:
+				file_path = os.path.join(training_folders["conf_wrong"], audio_name)
+			elif doubt == "doubt" and correct:
+				file_path = os.path.join(training_folders["doubt_corr"], audio_name)
+			elif doubt == "doubt" and not correct:
+				file_path = os.path.join(training_folders["doubt_wrong"], audio_name)
+			with open(file_path, "wb") as f:
+			    f.write(audio.get_wav_data())
+			
+			dat = m.export_data(os.path.join(training_folders["train_dir"], f"subj_{var.subject_nr}.csv"))
 		
 		# Increment trial number
 		var.trial_num += 1
@@ -297,6 +314,38 @@ define inline_script present_trial
 	import jellyfish as jf
 	import os
 	import pyttsx3
+	
+	# Creates folders for training data
+	def createFolders():
+	    folder_list = {}
+	    
+	    training_dir = os.path.join(var.main_dir, "training_data")
+	    folder_list["train_dir"] = training_dir
+	    
+	    # Confident - correct answer
+	    conf_corr_dir = os.path.join(var.main_dir, "training_data", "conf_corr")
+	    if not os.path.exists(conf_corr_dir):
+		    os.makedirs(conf_corr_dir)
+	    folder_list["conf_corr"] = conf_corr_dir
+	    
+	    # Confident - wrong answer
+	    conf_wrong_dir = os.path.join(var.main_dir, "training_data", "conf_wrong")
+	    if not os.path.exists(conf_wrong_dir):
+		    os.makedirs(conf_wrong_dir)
+	    folder_list["conf_wrong"] = conf_wrong_dir
+	    
+	    # Doubt - correct answer
+	    doubt_corr_dir = os.path.join(var.main_dir, "training_data", "doubt_corr")
+	    if not os.path.exists(doubt_corr_dir):
+		    os.makedirs(doubt_corr_dir)
+	    folder_list["doubt_corr"] = doubt_corr_dir
+	    
+	    # Doubt - wrong answer
+	    doubt_wrong_dir = os.path.join(var.main_dir, "training_data", "doubt_wrong")
+	    if not os.path.exists(doubt_wrong_dir):
+		    os.makedirs(doubt_wrong_dir)
+	    folder_list["doubt_wrong"] = doubt_wrong_dir
+	    return folder_list
 	
 	def doubtPrompt(my_canvas, my_keyboard, audio_name, audio_dir, waitedTooLong):
 	    # Ask participant if the response was doubtful/confident. This still had to be added to the functions to clean up this file.
@@ -337,6 +386,7 @@ define inline_script present_trial
 			    file_path = os.path.join(doubt_dir, audio_name)
 		    with open(file_path, "wb") as f:
 			    f.write(audio.get_wav_data())
+	    return doubt
 	
 	# Checks for the phonetic similarity between two phrases
 	def checkSimilarity(answer, speech_answer):
@@ -698,6 +748,7 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
+	set source_file ""
 	set source table
 	set repeat 100
 	set order random
