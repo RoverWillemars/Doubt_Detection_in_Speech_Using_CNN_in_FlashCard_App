@@ -5,7 +5,7 @@ Platform: nt
 ---
 set width 1024
 set uniform_coordinates yes
-set title "SlimStampen example"
+set title "Auditory Fact Learning"
 set subject_parity even
 set subject_nr 0
 set start experiment
@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "C:/Users/remon/OneDrive/Bureaublad/BCN_ReMa2/User_Modelling/GitHub"
+set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -56,8 +56,8 @@ define inline_script learning_session_setup
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	#var.main_dir = "D:\\Studie\\User-Modelling\\user-modelling-project-neural-navigators"
-	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	
 	# Check each trial manually for doubt
 	var.checkDoubt = True
@@ -89,7 +89,7 @@ define inline_script present_trial
 	import librosa
 	import numpy as np
 	import os
-	import time as time_lib # lazy work around for variable "time"
+	#import time as time_lib # lazy work around for variable ?#
 	#from pathlib import Path #redundant
 	
 	trial_start_time = clock.time()
@@ -131,9 +131,9 @@ define inline_script present_trial
 	my_canvas.show()
 	
 	if new: # edit Remon
-		time_lib.sleep(0.5)
+		clock.sleep(500)
 		speakPhrase(answer)
-		time_lib.sleep(0.5)
+		clock.sleep(500)
 		
 		# Listen for keyboard input
 		my_keyboard = Keyboard()
@@ -151,9 +151,7 @@ define inline_script present_trial
 		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan) #might want to change what we do with rt here?
 			
 		m.register_response(response) 
-	
-	if not new:
-	
+	else:
 		# Listen for keyboard input
 		my_keyboard = Keyboard()
 		rt = float("inf")
@@ -262,50 +260,15 @@ define inline_script present_trial
 			
 			# -----------------------
 		
-		# Log response
-		response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage)
+			# Log response (if features are extracted)
+			response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage)
+		
+		# Register response
 		m.register_response(response) 
 		
-		
+		# Show doubt/confident prompt
 		if var.checkDoubt:
-			# Ask participant if the response was doubtful/confident. This still had to be added to the functions to clean up this file.
-			my_canvas.clear()
-			my_canvas.image(prompt, scale=stim_scale, y=-200)
-			my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
-			my_canvas.text("Press \"Space\" for confident", y = 150, font_size = 20, color = "black")
-			my_canvas.text("and \"z\" key for doubtful.", y = 200, font_size = 20, color = "black")
-			my_canvas.prepare()
-			my_canvas.show()
-			
-			time_lib.sleep(1.5)
-			
-			# Lock user in this loop till they respond with "space" or "z" key.
-			while True:
-				# Get keypress
-				key, time = my_keyboard.get_key()
-				
-				if key == "space":
-					doubt = "confident"
-					break
-				elif key == "z":
-					doubt = "doubt"
-					break
-		
-			# Determine "doubt" and "conf" folder
-			doubt_dir = os.path.join(audio_dir, "doubt")
-			conf_dir = os.path.join(audio_dir, "conf")
-			if not os.path.exists(doubt_dir):
-				os.mkdir(doubt_dir)
-			if not os.path.exists(conf_dir):
-				os.mkdir(conf_dir)
-			
-			if not waitedTooLong:
-				if doubt == "confident":
-					file_path = os.path.join(conf_dir, audio_name)
-				elif doubt == "doubt":
-					file_path = os.path.join(doubt_dir, audio_name)
-				with open(file_path, "wb") as f:
-					f.write(audio.get_wav_data())
+			doubtPrompt(my_canvas, my_keyboard, audio_name, audio_dir, waitedTooLong)
 	
 	# save the audio response into the corresponding folder. 
 	#splitClasses(y, answer, doubt, samp_rate) 
@@ -329,8 +292,48 @@ define inline_script present_trial
 	___prepare__
 	import soundfile as sf
 	import jellyfish as jf
-	#import os #redundant
+	import os
 	import pyttsx3
+	
+	def doubtPrompt(my_canvas, my_keyboard, audio_name, audio_dir, waitedTooLong):
+	    # Ask participant if the response was doubtful/confident. This still had to be added to the functions to clean up this file.
+	    my_canvas.clear()
+	    my_canvas.image(prompt, scale=stim_scale, y=-200)
+	    my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
+	    my_canvas.text("Press \"A\" for confident", y = 150, font_size = 20, color = "black")
+	    my_canvas.text("and \"L\" key for doubtful.", y = 200, font_size = 20, color = "black")
+	    my_canvas.prepare()
+	    my_canvas.show()
+			
+	    clock.sleep(1500)
+		
+		# Lock user in this loop till they respond with "space" or "z" key.
+	    while True:
+		    # Get keypress
+		    key, time = my_keyboard.get_key()
+				
+		    if key == "a":
+			    doubt = "confident"
+			    break
+		    elif key == "l":
+			    doubt = "doubt"
+			    break
+		
+		# Determine "doubt" and "conf" folder
+	    doubt_dir = os.path.join(audio_dir, "doubt")
+	    conf_dir = os.path.join(audio_dir, "conf")
+	    if not os.path.exists(doubt_dir):
+		    os.mkdir(doubt_dir)
+	    if not os.path.exists(conf_dir):
+		    os.mkdir(conf_dir)
+			
+	    if not waitedTooLong:
+		    if doubt == "confident":
+			    file_path = os.path.join(conf_dir, audio_name)
+		    elif doubt == "doubt":
+			    file_path = os.path.join(doubt_dir, audio_name)
+		    with open(file_path, "wb") as f:
+			    f.write(audio.get_wav_data())
 	
 	# Checks for the phonetic similarity between two phrases
 	def checkSimilarity(answer, speech_answer):
