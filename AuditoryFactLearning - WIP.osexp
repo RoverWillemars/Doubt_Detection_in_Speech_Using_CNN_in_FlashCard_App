@@ -150,9 +150,9 @@ define inline_script present_trial
 				rt = clock.time() - trial_start_time
 				break
 		
-		#response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan) #might want to change what we do with rt here?
+		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan) #might want to change what we do with rt here?
 			
-		#m.register_response(response) 
+		m.register_response(response) 
 	else:
 		# ----------------
 		# --- STIMULUS ---
