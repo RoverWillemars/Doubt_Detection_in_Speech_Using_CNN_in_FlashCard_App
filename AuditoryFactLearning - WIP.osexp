@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+set experiment_path "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -39,9 +39,10 @@ set background "#fcf7f0"
 define sequence experiment
 	set flush_keyboard yes
 	set description "Runs a number of items in sequence"
+	run loading_packages True
 	run learning_session_setup always
 	run present_questions True
-	run instructions always
+	run instructions True
 	run slimstampen_setup always
 	run while_there_is_time_left always
 	run save_data always
@@ -49,16 +50,48 @@ define sequence experiment
 define sketchpad instructions
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Instructions:<br />Welcome!<br />Your task during this experiment will be learn the outlines of various countries. This can be quite challenging, so don't worry if you get too many wrong. However, still try your best!<br /><br />The first time you see a new country outline, the name and how it is pronounced will be played out loud. The rest of the experiment will consist of random countries that will be shown to you and you have to press SPACE to start your response. Say the country name and you get feedback with if you were correct or incorrect. <br /><br />After each question, you will be asked whether you were confident in your answer (press SPACE) or doubtful (press Z).<br /><br />The experiment should take around 30 minutes.<br /><br />Press SPACE when you've understood and are ready to start!" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Instructions:<br /><br />Your task during this experiment will be learn the outlines of various countries. This can be quite challenging, so don't worry if you get too many wrong. However, still try your best!<br /><br />The first time you see a new country outline, the name and how it is pronounced will be played out loud. The rest of the experiment will consist of random countries that will be shown to you and you have to press SPACE to start your response. Say the country name and you get feedback with if you were correct or incorrect. <br /><br />After each question, you will be asked whether you were confident in your answer (press SPACE) or doubtful (press Z).<br /><br />The experiment should take around 30 minutes.<br /><br />Press SPACE when you've understood and are ready to start!" x=0 y=0 z_index=0
 
 define inline_script learning_session_setup
 	set description "Executes Python code"
-	set _run ""
+	___run__
+	import librosa
+	import numpy as np
+	
+	data_folders = createFolders()
+	
+	file_path_overwrite = os.path.join(var.main_dir, 'speech_recognition', 'audioFile_memoryAllocation', 'memory_allocation.wav')
+	
+	y, samp_rate = librosa.load(file_path_overwrite, sr=None)
+			
+	# Extract pitch using pyin (better for single pitch)
+	f0,voiced_flag, voiced_probs = librosa.pyin(y, \
+				sr=samp_rate,
+				fmin=librosa.note_to_hz('C2'),
+				fmax=librosa.note_to_hz('C7')) 
+			
+	# Extract volume (RMS energy)
+	rms = librosa.feature.rms(y=y)[0]
+			
+	# calculate mean and deviation from pitch
+	f0_mean = np.nanmean(f0)
+	f0_sd = np.nanstd(f0)
+	f0_CoV = f0_sd / f0_mean
+			    
+	# calculate mean and deviation from volume
+	volume_mean = np.mean(rms)
+	volume_sd = np.nanstd(rms)
+	volume_CoV = volume_sd /volume_mean
+			
+	# calculate jitter
+	jitter = np.mean(np.abs(np.diff(f0[f0 > 0])))
+	jitter_percentage = (jitter / np.mean(f0[f0 > 0])) * 100
+	__end__
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
-	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	
 	# Check each trial manually for doubt
 	var.checkDoubt = True
@@ -83,7 +116,52 @@ define inline_script learning_session_setup
 	var.inter_trial_interval = 200
 	
 	var.show_demo = True
+	
+	
+	# Create folders
+	# Creates folders for training data
+	def createFolders():
+	    folder_list = {}
+	    
+	    participant_dir = os.path.join(var.main_dir, "participant_data")
+	    folder_list["participant_data_dir"] = participant_dir
+	    
+	    # Trial info
+	    trial_info_dir = os.path.join(var.main_dir, "participant_data", "trial_info")
+	    if not os.path.exists(trial_info_dir):
+	            os.makedirs(trial_info_dir)
+	    folder_list["trial_info"] = trial_info_dir
+	    
+	    # Confident - correct answer
+	    conf_corr_dir = os.path.join(var.main_dir, "participant_data", "conf_corr")
+	    if not os.path.exists(conf_corr_dir):
+		    os.makedirs(conf_corr_dir)
+	    folder_list["conf_corr"] = conf_corr_dir
+	    
+	    # Confident - wrong answer
+	    conf_wrong_dir = os.path.join(var.main_dir, "participant_data", "conf_wrong")
+	    if not os.path.exists(conf_wrong_dir):
+		    os.makedirs(conf_wrong_dir)
+	    folder_list["conf_wrong"] = conf_wrong_dir
+	    
+	    # Doubt - correct answer
+	    doubt_corr_dir = os.path.join(var.main_dir, "participant_data", "doubt_corr")
+	    if not os.path.exists(doubt_corr_dir):
+		    os.makedirs(doubt_corr_dir)
+	    folder_list["doubt_corr"] = doubt_corr_dir
+	    
+	    # Doubt - wrong answer
+	    doubt_wrong_dir = os.path.join(var.main_dir, "participant_data", "doubt_wrong")
+	    if not os.path.exists(doubt_wrong_dir):
+		    os.makedirs(doubt_wrong_dir)
+	    folder_list["doubt_wrong"] = doubt_wrong_dir
+	    return folder_list
 	__end__
+
+define sketchpad loading_packages
+	set duration 0
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Welcome! <br /><br />Allocating memory, wait a few seconds please." x=0 y=0 z_index=0
 
 define inline_script present_questions
 	set description "Executes Python code"
@@ -166,22 +244,13 @@ define inline_script present_trial
 	
 	trial_start_time = clock.time()
 	
-	training_folders = createFolders()
-	
-	# Determine path of trial info (can be iniated earlier but idc for now)
-	trialInfo_dir = os.path.join(var.main_dir, "participant_data", "trial_info")
-	if not os.path.exists(trialInfo_dir):
-		os.makedirs(trialInfo_dir)
+	#data_folders = createFolders() <-- we can set fixed variables like these (or others we want to initialize earlier on) in e.g. learning_session inline script.
 	
 	# Determine path of recording file
-	audio_dir = os.path.join(var.main_dir,"participant_data", "recordings")
-	if not os.path.exists(audio_dir):
-		os.makedirs(audio_dir)
 	audio_name = f"subj_{var.subject_nr}_trial_{var.trial_num}.wav"
-	file_path = os.path.join(audio_dir, audio_name)
 	
-	# the files not saved to folder can probably be overwritten all the tiem right, in that case, I make another variable for the .wav file name
-	file_path_overwrite = os.path.join(audio_dir, f"subj_{var.subject_nr}.wav")
+	# the files not saved to folder can probably be overwritten all the time right, in that case, I make another variable for the .wav file name
+	file_path_overwrite = os.path.join(data_folders["participant_data_dir"], "audio_to_overwrite.wav")
 	
 	# Get next fact from the model
 	next_fact, new = m.get_next_fact(current_time = trial_start_time)
@@ -199,7 +268,7 @@ define inline_script present_trial
 		my_canvas.text("Press Space to start talking", y=0, font_size=20, color="black")
 	if new:
 		my_canvas.text("Press Space if you got it", y=0, font_size=20, color="black")
-		my_canvas.text(answer, y=30, font_size=20, color="black")
+		my_canvas.text(answer, y=70, font_size=20, color="black")
 		
 	my_canvas.prepare()
 	my_canvas.show()
@@ -226,7 +295,7 @@ define inline_script present_trial
 				rt = clock.time() - trial_start_time
 				break
 		
-		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan) #might want to change what we do with rt here?
+		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan) 
 			
 		m.register_response(response) 
 	else:
@@ -258,8 +327,8 @@ define inline_script present_trial
 			basicUIfeatures(my_canvas)
 			my_canvas.image(prompt, scale=stim_scale, y=-200)
 			my_canvas.text("Start talking...", y = 0, font_size = 20, color = "green")
-			if new:
-				my_canvas.text(answer, y = 30, font_size = 20, color = "black")
+			#if new: why is this here?
+				#my_canvas.text(answer, y = 30, font_size = 20, color = "black")
 			my_canvas.prepare()
 			my_canvas.show()
 			
@@ -272,7 +341,7 @@ define inline_script present_trial
 		error = ""
 		if waitedTooLong: # need to check whether it should be recorded like this
 			error = "Answer took too long"
-			response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan)
+			#response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
 		else:
 			# Save audio as wav file (for feature extraction)
 			with open(file_path_overwrite, "wb") as f:
@@ -299,14 +368,22 @@ define inline_script present_trial
 		# Show feedback
 		feedback_color = "green" if correct else "red"
 		if error == "":
-			my_canvas.text(speech_response, y = 70, color = feedback_color)
+			if correct:
+				my_canvas.text(speech_response, y = 70, color = feedback_color)
+			elif not correct:
+				my_canvas.text(speech_response, y = 70, color = feedback_color)
+				my_canvas.rect(x=-149, y=-9, w=303, h=53, color="black", fill=True)
+				my_canvas.rect(x=-150, y=-10, w=300, h=50, color="white", fill=True)
+				my_canvas.text(answer , y = 10, color = "black")	
 		else:
 			my_canvas.text(error, y = 70, color = feedback_color)
-		if not correct or (correct and answer != speech_response):
-			my_canvas.text(answer, y = 70, color = "black")
+			my_canvas.rect(x=-149, y=-9, w=303, h=53, color="black", fill=True)
+			my_canvas.rect(x=-150, y=-10, w=300, h=50, color="white", fill=True)
+			my_canvas.text(answer , y = 10, color = "black")
+			
 		my_canvas.prepare()
 		my_canvas.show()
-		if not correct or (correct and answer != speech_response): #edit Remon
+		if not correct or (correct and answer != speech_response): # does the second part of the logic even make sense (i.e., will that ever happen?)
 			speakPhrase(answer)
 		clock.sleep(var.feedback_duration)
 		
@@ -343,32 +420,46 @@ define inline_script present_trial
 			# -----------------------
 		
 			# Log response (if features are extracted)
-			response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage)
+			#response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, doubt)
 		
 		# Register response
-		m.register_response(response) 
+		#m.register_response(response) 
 		
 		# Show doubt/confident prompt
 		if var.checkDoubt:
-			doubt = doubtPrompt(my_canvas, my_keyboard, audio_name, audio_dir, waitedTooLong)
+			doubt = doubtPrompt(my_canvas, my_keyboard)
 	
 		# this logs the data after every trial, instead of just the end
-		dat = m.export_data(os.path.join(trialInfo_dir, f"subj_{var.subject_nr}.csv"))
+		#dat = m.export_data(os.path.join(trialInfo_dir, f"subj_{var.subject_nr}.csv"))
 		
-		# Save to training data
+			if not waitedTooLong:
+				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, doubt)
+			elif waitedTooLong:
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+		
+		# if there's no doubt check then
+		elif not var.checkDoubt:
+			if not waitedTooLong:
+				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, "Not collected for this block")
+			elif waitedTooLong:	
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "Not collected for this block")
+		
+		# Register response and write to csv 
+		m.register_response(response) 	
+		dat = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}.csv"))	
+		
+		# Save to data folders
 		if not waitedTooLong and var.checkDoubt:
 			if doubt == "confident" and correct:
-				file_path = os.path.join(training_folders["conf_corr"], audio_name)
+				file_path = os.path.join(data_folders["conf_corr"], audio_name)
 			elif doubt == "confident" and not correct:
-				file_path = os.path.join(training_folders["conf_wrong"], audio_name)
+				file_path = os.path.join(data_folders["conf_wrong"], audio_name)
 			elif doubt == "doubt" and correct:
-				file_path = os.path.join(training_folders["doubt_corr"], audio_name)
+				file_path = os.path.join(data_folders["doubt_corr"], audio_name)
 			elif doubt == "doubt" and not correct:
-				file_path = os.path.join(training_folders["doubt_wrong"], audio_name)
+				file_path = os.path.join(data_folders["doubt_wrong"], audio_name)
 			with open(file_path, "wb") as f:
 			    f.write(audio.get_wav_data())
-			
-			dat = m.export_data(os.path.join(training_folders["train_dir"], f"subj_{var.subject_nr}.csv"))
 		
 		# Increment trial number
 		var.trial_num += 1
@@ -393,35 +484,41 @@ define inline_script present_trial
 	def createFolders():
 	    folder_list = {}
 	    
-	    training_dir = os.path.join(var.main_dir, "training_data")
-	    folder_list["train_dir"] = training_dir
+	    participant_dir = os.path.join(var.main_dir, "participant_data")
+	    folder_list["participant_dir"] = participant_dir
+	    
+	    # Trial info
+	    trial_info_dir = os.path.join(var.main_dir, "participant_data", "trial_info")
+	    if not os.path.exists(trial_info_dir):
+	            os.makedirs(trial_info_dir)
+	    folder_list["trial_info"] = trial_info_dir
 	    
 	    # Confident - correct answer
-	    conf_corr_dir = os.path.join(var.main_dir, "training_data", "conf_corr")
+	    conf_corr_dir = os.path.join(var.main_dir, "participant_data", "conf_corr")
 	    if not os.path.exists(conf_corr_dir):
 		    os.makedirs(conf_corr_dir)
 	    folder_list["conf_corr"] = conf_corr_dir
 	    
 	    # Confident - wrong answer
-	    conf_wrong_dir = os.path.join(var.main_dir, "training_data", "conf_wrong")
+	    conf_wrong_dir = os.path.join(var.main_dir, "participant_data", "conf_wrong")
 	    if not os.path.exists(conf_wrong_dir):
 		    os.makedirs(conf_wrong_dir)
 	    folder_list["conf_wrong"] = conf_wrong_dir
 	    
 	    # Doubt - correct answer
-	    doubt_corr_dir = os.path.join(var.main_dir, "training_data", "doubt_corr")
+	    doubt_corr_dir = os.path.join(var.main_dir, "participant_data", "doubt_corr")
 	    if not os.path.exists(doubt_corr_dir):
 		    os.makedirs(doubt_corr_dir)
 	    folder_list["doubt_corr"] = doubt_corr_dir
 	    
 	    # Doubt - wrong answer
-	    doubt_wrong_dir = os.path.join(var.main_dir, "training_data", "doubt_wrong")
+	    doubt_wrong_dir = os.path.join(var.main_dir, "participant_data", "doubt_wrong")
 	    if not os.path.exists(doubt_wrong_dir):
 		    os.makedirs(doubt_wrong_dir)
 	    folder_list["doubt_wrong"] = doubt_wrong_dir
 	    return folder_list
 	
-	def doubtPrompt(my_canvas, my_keyboard, audio_name, audio_dir, waitedTooLong):
+	def doubtPrompt(my_canvas, my_keyboard):
 	    # Ask participant if the response was doubtful/confident. This still had to be added to the functions to clean up this file.
 	    my_canvas.clear()
 	    basicUIfeatures(my_canvas, False)
@@ -447,20 +544,20 @@ define inline_script present_trial
 			    break
 		
 		# Determine "doubt" and "conf" folder
-	    doubt_dir = os.path.join(audio_dir, "doubt")
-	    conf_dir = os.path.join(audio_dir, "conf")
-	    if not os.path.exists(doubt_dir):
-		    os.mkdir(doubt_dir)
-	    if not os.path.exists(conf_dir):
-		    os.mkdir(conf_dir)
+	    #doubt_dir = os.path.join(audio_dir, "doubt")
+	    #conf_dir = os.path.join(audio_dir, "conf")
+	    #if not os.path.exists(doubt_dir):
+		#    os.mkdir(doubt_dir)
+	    #if not os.path.exists(conf_dir):
+		#    os.mkdir(conf_dir)
 			
-	    if not waitedTooLong:
-		    if doubt == "confident":
-			    file_path = os.path.join(conf_dir, audio_name)
-		    elif doubt == "doubt":
-			    file_path = os.path.join(doubt_dir, audio_name)
-		    with open(file_path, "wb") as f:
-			    f.write(audio.get_wav_data())
+	    #if not waitedTooLong:
+		#    if doubt == "confident":
+		#	    file_path = os.path.join(conf_dir, audio_name)
+		  #  elif doubt == "doubt":
+			#    file_path = os.path.join(doubt_dir, audio_name)
+		   # with open(file_path, "wb") as f:
+		#	    f.write(audio.get_wav_data())
 	    return doubt
 	
 	# Checks for the phonetic similarity between two phrases
@@ -498,7 +595,7 @@ define inline_script present_trial
 	    if response_box == True:
 	        canvas['response_box_shadow'] = Rect(x=-149, y=51, w=303, h=53, color="black", fill=True)
 	        canvas['response_box'] = Rect(x=-150, y=50, w=300, h=50, color="white", fill=True)
-	        
+	               
 	def askConfidence(canvas):
 	    my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
 	    
@@ -541,7 +638,7 @@ define inline_script slimstampen_setup
 	from collections import namedtuple
 	
 	Fact = namedtuple("Fact", "fact_id, question, answer")
-	Response = namedtuple("Response","fact, start_time, rt, correct, f0_mean, vol_mean, f0_CoV, vol_CoV, jit_perc")
+	Response = namedtuple("Response","fact, start_time, rt, correct, f0_mean, vol_mean, f0_CoV, vol_CoV, jit_perc, doubt")
 	#Response = namedtuple("Response","fact, start_time, rt, correct")
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
