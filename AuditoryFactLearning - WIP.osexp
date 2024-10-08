@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "C:/Users/Rover/user-modelling-project-neural-navigators"
+set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -36,23 +36,11 @@ set clock_backend legacy
 set canvas_backend legacy
 set background "#fcf7f0"
 
-define loop demographic_loop
-	set source table
-	set repeat 1
-	set order random
-	set description "Repeatedly runs another item"
-	set cycles 1
-	set continuous no
-	set break_if_on_first yes
-	set break_if "[show_demo] = False"
-	setcycle 0 empty_column ""
-	run question_sequence
-
 define sequence experiment
 	set flush_keyboard yes
 	set description "Runs a number of items in sequence"
 	run learning_session_setup always
-	run demographic_loop True
+	run present_questions True
 	run instructions always
 	run slimstampen_setup always
 	run while_there_is_time_left always
@@ -68,8 +56,8 @@ define inline_script learning_session_setup
 	set _run ""
 	___prepare__
 	# Main directory, containing all necessary files and folder
-	var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
+	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
 	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	
 	# Check each trial manually for doubt
@@ -102,7 +90,8 @@ define inline_script present_questions
 	___run__
 	demo_canvas = Canvas()
 	var.q_index = 0
-	var.key_list = list()
+	answer = ""
+	answer_list = [var.subject_nr]
 	
 	while(show_demo == True):
 	    
@@ -115,42 +104,56 @@ define inline_script present_questions
 	    
 	    key_press, time = demo_keyboard.get_key()
 	    
-	    if key_press:
-	        if key_press == "space":
-	            key_press = " "
-	        key_list.append(key_press)
-	        show_keypresses = (''.join(key_list))
+	    if key_press == 'backspace' and len(answer) > 0:
+	        answer = answer[:-1]
 	        demo_canvas.clear()
-	        demo_canvas.text(show_keypresses, y=200, font_size=20, color="black")
-	        demo_canvas.prepare()
-	        demo_canvas.show()
-	    
-	    if (key_press == 'backspace') and (len(key_list) >= 2):
-	        del key_list[-1] # delete two times, because 'backspace' is first added to list, but the other element must be 
-	        del key_list[-1] # removed too
-	        show_keypresses = (''.join(key_list))
-	        demo_canvas.clear()
-	        demo_canvas.text(show_keypresses, y=200, font_size=20, color="black")
+	        demo_canvas.text(answer, y=200, font_size=20, color="black")
 	        demo_canvas.prepare()
 	        demo_canvas.show()
 	        
-	    
-	    if key_press == 'return':
+	    elif key_press == 'return':
+	        # Go to next question
 	        q_index = q_index + 1
 	        
+	        # 
 	        if q_index >= len(list_of_questions):
 	            show_demo = False
 	            
 	        #should log the response here.
-	        key_list = []
+	        answer_list.append(answer)
+	        answer = ""
 	        demo_canvas.clear()
+	    
+	    elif key_press.isalnum() and key_press != 'backspace':
+	        if key_press == "space":
+	            key_press = " "
+	        answer += key_press
+	        demo_canvas.clear()
+	        demo_canvas.text(answer, y=200, font_size=20, color="black")
+	        demo_canvas.prepare()
+	        demo_canvas.show()
+	
+	# Append to the demo.csv file
+	with open(demo_path, 'a', newline='') as file:
+	    writer = csv.writer(file)
+	    writer.writerow(answer_list)
 	__end__
 	___prepare__
+	import csv
+	import os
+	
+	question_types = ["subj_nr", "age", "gender", "nationality", "geo_familiarity"]
 	list_of_questions=[
 	    "What is your age?",
 	    "What gender do you identify as?",
 	    "What nationality are you?",
 	    "How familiar are you with geography?"]
+	
+	demo_path = os.path.join(var.main_dir, "demo.csv")
+	if not os.path.exists(demo_path):
+	    with open(demo_path, 'w', newline='') as file:
+	        writer = csv.writer(file)
+	        writer.writerow(question_types)
 	__end__
 
 define inline_script present_trial
@@ -502,11 +505,6 @@ define inline_script present_trial
 	
 	    
 	__end__
-
-define sequence question_sequence
-	set flush_keyboard yes
-	set description "Runs a number of items in sequence"
-	run present_questions True
 
 define inline_script save_data
 	set description "Executes Python code"
