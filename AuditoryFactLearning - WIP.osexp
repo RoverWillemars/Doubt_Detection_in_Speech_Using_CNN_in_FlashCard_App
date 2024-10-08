@@ -89,8 +89,6 @@ define inline_script present_trial
 	import librosa
 	import numpy as np
 	import os
-	#import time as time_lib # lazy work around for variable ?#
-	#from pathlib import Path #redundant
 	
 	trial_start_time = clock.time()
 	
@@ -130,7 +128,11 @@ define inline_script present_trial
 	my_canvas.prepare()
 	my_canvas.show()
 	
-	if new: # edit Remon
+	if new:
+		# --------------------
+		# --- NEW STIMULUS ---
+		# --------------------
+		
 		clock.sleep(500)
 		speakPhrase(answer)
 		clock.sleep(500)
@@ -148,10 +150,14 @@ define inline_script present_trial
 				rt = clock.time() - trial_start_time
 				break
 		
-		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan) #might want to change what we do with rt here?
+		#response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan) #might want to change what we do with rt here?
 			
-		m.register_response(response) 
+		#m.register_response(response) 
 	else:
+		# ----------------
+		# --- STIMULUS ---
+		# ----------------
+		
 		# Listen for keyboard input
 		my_keyboard = Keyboard()
 		rt = float("inf")
@@ -270,11 +276,11 @@ define inline_script present_trial
 		if var.checkDoubt:
 			doubtPrompt(my_canvas, my_keyboard, audio_name, audio_dir, waitedTooLong)
 	
-	# save the audio response into the corresponding folder. 
-	#splitClasses(y, answer, doubt, samp_rate) 
-	
-	# this logs the data after every trial, instead of just the end
-	dat = m.export_data(os.path.join(trialInfo_dir, f"subj_{var.subject_nr}.csv"))
+		# this logs the data after every trial, instead of just the end
+		dat = m.export_data(os.path.join(trialInfo_dir, f"subj_{var.subject_nr}.csv"))
+		
+		# Increment trial number
+		var.trial_num += 1
 	
 	# Clear the screen between trials
 	my_canvas.clear()
@@ -285,9 +291,6 @@ define inline_script present_trial
 	# Check if time is up
 	if clock.time() - var.session_start_time >= var.session_duration:
 		var.time_up = True
-	
-	# Increment trial number
-	var.trial_num += 1
 	__end__
 	___prepare__
 	import soundfile as sf
@@ -670,6 +673,7 @@ define inline_script slimstampen_setup
 	
 	        dat_resp = pd.DataFrame(self.responses)
 	        dat_facts = pd.DataFrame([r.fact for r in self.responses])
+	        dat_facts.drop(columns=["question"], inplace=True)
 	        dat = pd.concat([dat_resp, dat_facts], axis = 1)
 	
 	        # Add column for rate of forgetting estimate after each observation
