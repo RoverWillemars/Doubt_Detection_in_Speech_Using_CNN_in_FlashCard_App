@@ -188,7 +188,7 @@ define inline_script present_trial
 	prompt = next_fact.question
 	answer = next_fact.answer
 	
-	stim_scale = 0.7 #stimuli are 490x490 pixels at .7x scale
+	stim_scale = 0.4 #stimuli are 280x280 pixels at .4x scale. sreen size is 1024x768
 	
 	my_canvas = Canvas()
 	
@@ -196,10 +196,10 @@ define inline_script present_trial
 	#Show prompt:
 	my_canvas.image(prompt, scale=stim_scale, y=-200)
 	if not new:
-		my_canvas.text("Press Space to start talking", y=100, font_size=20, color="black")
+		my_canvas.text("Press Space to start talking", y=0, font_size=20, color="black")
 	if new:
-		my_canvas.text("Press Space if you got it", y=100, font_size=20, color="black")
-		my_canvas.text(answer, y=150, font_size=20, color="black")
+		my_canvas.text("Press Space if you got it", y=0, font_size=20, color="black")
+		my_canvas.text(answer, y=30, font_size=20, color="black")
 		
 	my_canvas.prepare()
 	my_canvas.show()
@@ -257,9 +257,9 @@ define inline_script present_trial
 			my_canvas.clear()
 			basicUIfeatures(my_canvas)
 			my_canvas.image(prompt, scale=stim_scale, y=-200)
-			my_canvas.text("Start talking...", y = 100, font_size = 20, color = "green")
+			my_canvas.text("Start talking...", y = 0, font_size = 20, color = "green")
 			if new:
-				my_canvas.text(answer, y = 150, font_size = 20, color = "black")
+				my_canvas.text(answer, y = 30, font_size = 20, color = "black")
 			my_canvas.prepare()
 			my_canvas.show()
 			
@@ -299,11 +299,11 @@ define inline_script present_trial
 		# Show feedback
 		feedback_color = "green" if correct else "red"
 		if error == "":
-			my_canvas.text(speech_response, y = 200, color = feedback_color)
+			my_canvas.text(speech_response, y = 70, color = feedback_color)
 		else:
-			my_canvas.text(error, y = 200, color = feedback_color)
+			my_canvas.text(error, y = 70, color = feedback_color)
 		if not correct or (correct and answer != speech_response):
-			my_canvas.text(answer, y = 250, color = "black")
+			my_canvas.text(answer, y = 70, color = "black")
 		my_canvas.prepare()
 		my_canvas.show()
 		if not correct or (correct and answer != speech_response): #edit Remon
@@ -424,10 +424,11 @@ define inline_script present_trial
 	def doubtPrompt(my_canvas, my_keyboard, audio_name, audio_dir, waitedTooLong):
 	    # Ask participant if the response was doubtful/confident. This still had to be added to the functions to clean up this file.
 	    my_canvas.clear()
+	    basicUIfeatures(my_canvas, False)
 	    my_canvas.image(prompt, scale=stim_scale, y=-200)
-	    my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
-	    my_canvas.text("Press \"A\" for confident", y = 150, font_size = 20, color = "black")
-	    my_canvas.text("and \"L\" key for doubtful.", y = 200, font_size = 20, color = "black")
+	    my_canvas.text("How confident was your last answer?", y = 0, font_size = 20, color = "black")
+	    my_canvas.text("Press \"A\" for confident", y = 50, font_size = 20, color = "black")
+	    my_canvas.text("and \"L\" key for doubtful.", y = 100, font_size = 20, color = "black")
 	    my_canvas.prepare()
 	    my_canvas.show()
 			
@@ -491,11 +492,12 @@ define inline_script present_trial
 	        pass
 	    engine.runAndWait()
 	
-	def basicUIfeatures(canvas):
-	    canvas['stimulus_box_shadow'] = Rect(x=-299, y=-544, w=603, h=603, color="black", fill=True)
-	    canvas['stimulus_box'] = Rect(x=-300, y=-545, w=600, h=600, color="white", fill=True)
-	    canvas['response_box_shadow'] = Rect(x=-149, y=171, w=303, h=63, color="black", fill=True)
-	    canvas['response_box'] = Rect(x=-150, y=170, w=300, h=60, color="white", fill=True)
+	def basicUIfeatures(canvas, response_box = True): #280x280 pixels at .4x scale. sreen size is 1024x768
+	    canvas['stimulus_box_shadow'] = Rect(x=-147, y=-371, w=300, h=300, color="black", fill=True)
+	    canvas['stimulus_box'] = Rect(x=-150, y=-374, w=300, h=300, color="white", fill=True)
+	    if response_box == True:
+	        canvas['response_box_shadow'] = Rect(x=-149, y=51, w=303, h=53, color="black", fill=True)
+	        canvas['response_box'] = Rect(x=-150, y=50, w=300, h=50, color="white", fill=True)
 	        
 	def askConfidence(canvas):
 	    my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
