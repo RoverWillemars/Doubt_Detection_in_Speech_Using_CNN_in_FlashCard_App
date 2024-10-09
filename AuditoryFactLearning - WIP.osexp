@@ -1,6 +1,6 @@
 ---
 API: 3
-OpenSesame: 4.0.24
+OpenSesame: 4.0.5
 Platform: nt
 ---
 set width 1024
@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "C:/Users/Rover/user-modelling-project-neural-navigators"
+set experiment_path "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -50,7 +50,7 @@ define sequence experiment
 define sketchpad instructions
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Instructions:<br /><br />Your task during this experiment will be learn the outlines of various countries. This can be quite challenging, so don't worry if you get too many wrong. However, still try your best!<br /><br />The first time you see a new country outline, the name and how it is pronounced will be played out loud. The rest of the experiment will consist of random countries that will be shown to you and you have to press SPACE to start your response. Say the country name and you get feedback with if you were correct or incorrect. <br /><br />After each question, you will be asked whether you were confident in your answer (press SPACE) or doubtful (press Z).<br /><br />The experiment should take around 30 minutes.<br /><br />Press SPACE when you've understood and are ready to start!" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Instructions:<br /><br />Your task during this experiment will be learn the outlines of various countries. This can be quite challenging, so don't worry if you get too many wrong. However, still try your best!<br /><br />The first time you see a new country outline, the name and how it is pronounced will be played out loud. The rest of the experiment will consist of random countries that will be shown to you and you have to press SPACE to start your response. Say the country name and you get feedback with if you were correct or incorrect. <br /><br />After each question, you will be asked whether you were confident in your answer (press A) or doubtful (press L).<br /><br />The experiment should take around 30 minutes.<br /><br />Press SPACE when you've understood and are ready to start!" x=0 y=0 z_index=0
 
 define inline_script learning_session_setup
 	set description "Executes Python code"
@@ -89,9 +89,10 @@ define inline_script learning_session_setup
 	__end__
 	___prepare__
 	# Main directory, containing all necessary files and folder
-	var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
+	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
 	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
 	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	var.main_dir = "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
 	
 	# Check each trial manually for doubt
 	var.checkDoubt = True
@@ -226,7 +227,7 @@ define inline_script present_questions
 	    "What nationality are you?",
 	    "How familiar are you with geography?"]
 	
-	demo_path = os.path.join(var.main_dir, "demo.csv")
+	demo_path = os.path.join(var.main_dir, f"subj_{var.subject_nr}_demographics.csv")
 	if not os.path.exists(demo_path):
 	    with open(demo_path, 'w', newline='') as file:
 	        writer = csv.writer(file)
@@ -920,6 +921,7 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
+	set source_file ""
 	set source table
 	set repeat 100
 	set order random
