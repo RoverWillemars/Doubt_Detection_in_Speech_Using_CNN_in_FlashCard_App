@@ -1,6 +1,6 @@
 ---
 API: 3
-OpenSesame: 4.0.5
+OpenSesame: 4.0.24
 Platform: nt
 ---
 set width 1024
@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
+set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -90,9 +90,9 @@ define inline_script learning_session_setup
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
 	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
-	var.main_dir = "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
+	#var.main_dir = "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
 	
 	# Check each trial manually for doubt
 	var.checkDoubt = True
@@ -440,9 +440,9 @@ define inline_script present_trial
 		# if there's no doubt check then
 		elif not var.checkDoubt:
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, "Not collected for this block")
+				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, np.nan)
 			elif waitedTooLong:	
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "Not collected for this block")
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
 		
 		# Register response and write to csv 
 		m.register_response(response) 	
@@ -450,13 +450,13 @@ define inline_script present_trial
 		
 		# Save to data folders
 		if not waitedTooLong and var.checkDoubt:
-			if doubt == "confident" and correct:
+			if not doubt and correct:
 				file_path = os.path.join(data_folders["conf_corr"], audio_name)
-			elif doubt == "confident" and not correct:
+			elif not doubt and not correct:
 				file_path = os.path.join(data_folders["conf_wrong"], audio_name)
-			elif doubt == "doubt" and correct:
+			elif doubt and correct:
 				file_path = os.path.join(data_folders["doubt_corr"], audio_name)
-			elif doubt == "doubt" and not correct:
+			elif doubt and not correct:
 				file_path = os.path.join(data_folders["doubt_wrong"], audio_name)
 			with open(file_path, "wb") as f:
 			    f.write(audio.get_wav_data())
@@ -519,7 +519,8 @@ define inline_script present_trial
 	    return folder_list
 	
 	def doubtPrompt(my_canvas, my_keyboard):
-	    # Ask participant if the response was doubtful/confident. This still had to be added to the functions to clean up this file.
+	    # Ask participant if the response was doubtful/confident
+	    # Returns True if doubtful, False if confident
 	    my_canvas.clear()
 	    basicUIfeatures(my_canvas, False)
 	    my_canvas.image(prompt, scale=stim_scale, y=-200)
@@ -537,10 +538,10 @@ define inline_script present_trial
 		    key, time = my_keyboard.get_key()
 				
 		    if key == "a":
-			    doubt = "confident"
+			    doubt = False
 			    break
 		    elif key == "l":
-			    doubt = "doubt"
+			    doubt = True
 			    break
 		
 		# Determine "doubt" and "conf" folder
@@ -663,10 +664,30 @@ define inline_script slimstampen_setup
 	    DEFAULT_ALPHA = 0.3
 	    C = 0.25
 	    F = 1.0
+	    
+	    # Doubt modifiers
+	    CONF_CORR = 1
+	    CONF_WRNG = 1
+	    DOUBT_CORR = 1
+	    DOUBT_WRNG = 1
 	
 	    def __init__(self):
 	        self.facts = []
 	        self.responses = []
+	
+	    def get_doubt_mod(self, correct, doubt):
+	        if not doubt and correct:
+	            # Confident and correct answer
+	            return self.CONF_CORR
+	        elif not doubt and not correct:
+	            # Confident and wrong answer
+	            return self.CONF_WRNG
+	        elif doubt and correct:
+	            # Doubtful and correct answer
+	            return self.DOUBT_CORR
+	        elif doubt and not correct:
+	            # Doubtful and wrong answer
+	            return self.DOUBT_WRNG
 	
 	    def add_fact(self, fact):
 	        # type: (Fact) -> None
@@ -733,12 +754,15 @@ define inline_script slimstampen_setup
 	
 	        # Calculate the activation by running through the sequence of previous responses
 	        for response in responses_for_fact:
+	            # Determine value of doubt modifier
+	            doubt_mod = self.get_doubt_mod(response.correct, response.doubt)
+	            
 	            activation = self.calculate_activation_from_encounters(encounters, response.start_time)
 	            encounters.append(Encounter(activation, response.start_time, self.normalise_reaction_time(response), self.DEFAULT_ALPHA))
 	            alpha = self.estimate_alpha(encounters, activation, response, alpha)
 	
 	            # Update decay estimates of previous encounters
-	            encounters = [encounter._replace(decay = self.calculate_decay(encounter.activation, alpha)) for encounter in encounters]
+	            encounters = [encounter._replace(decay = self.calculate_decay(encounter.activation, alpha, doubt_mod)) for encounter in encounters]
 	
 	        return(alpha)
 	
@@ -749,6 +773,8 @@ define inline_script slimstampen_setup
 	        Calculate the activation of a fact at the given time.
 	        """
 	
+	        # Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
+	
 	        encounters = []
 	
 	        responses_for_fact = [r for r in self.responses if r.fact.fact_id == fact.fact_id and r.start_time < time]
@@ -756,22 +782,30 @@ define inline_script slimstampen_setup
 	
 	        # Calculate the activation by running through the sequence of previous responses
 	        for response in responses_for_fact:
+	            # Determine value of doubt modifier
+	            doubt_mod = self.get_doubt_mod(response.correct, response.doubt)
+	            
+	            # Get activation of fact up to previous encounter
 	            activation = self.calculate_activation_from_encounters(encounters, response.start_time)
+	            
+	            # Add current encounter to encounter list
 	            encounters.append(Encounter(activation, response.start_time, self.normalise_reaction_time(response), self.DEFAULT_ALPHA))
+	            
+	            # Estimate new rate of forgetting up to current encounter
 	            alpha = self.estimate_alpha(encounters, activation, response, alpha)
 	
-	            # Update decay estimates of previous encounters
-	            encounters = [encounter._replace(decay = self.calculate_decay(encounter.activation, alpha)) for encounter in encounters]
+	            # Update decay estimates of all encounters till now
+	            encounters = [encounter._replace(decay = self.calculate_decay(encounter.activation, alpha, doubt_mod)) for encounter in encounters]
 	
 	        return(self.calculate_activation_from_encounters(encounters, time))
 	
 	
-	    def calculate_decay(self, activation, alpha):
+	    def calculate_decay(self, activation, alpha, doubt_mod):
 	        # type: (float, float) -> float
 	        """
 	        Calculate activation-dependent decay
 	        """
-	        return self.C * math.exp(activation) + alpha
+	        return self.C * math.exp(activation) + alpha * doubt_mod
 	
 	
 	    def estimate_alpha(self, encounters, activation, response, previous_alpha):
