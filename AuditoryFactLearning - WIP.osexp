@@ -227,7 +227,7 @@ define inline_script present_questions
 	    "What nationality are you?",
 	    "How familiar are you with geography?"]
 	
-	demo_path = os.path.join(var.main_dir, f"subj_{var.subject_nr}_demographics.csv")
+	demo_path = os.path.join(var.main_dir, "demo.csv")
 	if not os.path.exists(demo_path):
 	    with open(demo_path, 'w', newline='') as file:
 	        writer = csv.writer(file)
