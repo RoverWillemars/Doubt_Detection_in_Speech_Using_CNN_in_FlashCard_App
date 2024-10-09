@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+set experiment_path "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -36,28 +36,10 @@ set clock_backend legacy
 set canvas_backend legacy
 set background "#fcf7f0"
 
-define sequence experiment
-	set flush_keyboard yes
-	set description "Runs a number of items in sequence"
-	run loading_packages True
-	run learning_session_setup always
-	run present_questions True
-	run instructions True
-	run slimstampen_setup always
-	run while_there_is_time_left always
-	run save_data always
-
-define sketchpad instructions
-	set duration keypress
-	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Instructions:<br /><br />Your task during this experiment will be learn the outlines of various countries. This can be quite challenging, so don't worry if you get too many wrong. However, still try your best!<br /><br />The first time you see a new country outline, the name and how it is pronounced will be played out loud. The rest of the experiment will consist of random countries that will be shown to you and you have to press SPACE to start your response. Say the country name and you get feedback with if you were correct or incorrect. <br /><br />After each question, you will be asked whether you were confident in your answer (press A) or doubtful (press L).<br /><br />The experiment should take around 30 minutes.<br /><br />Press SPACE when you've understood and are ready to start!" x=0 y=0 z_index=0
-
-define inline_script learning_session_setup
+define inline_script constants_memoryAlloc_setup
 	set description "Executes Python code"
 	___run__
-	import librosa
-	import numpy as np
-	
+	# create folders for organizing doubtful/confident responses
 	data_folders = createFolders()
 	
 	file_path_overwrite = os.path.join(var.main_dir, 'speech_recognition', 'audioFile_memoryAllocation', 'memory_allocation.wav')
@@ -86,12 +68,41 @@ define inline_script learning_session_setup
 	# calculate jitter
 	jitter = np.mean(np.abs(np.diff(f0[f0 > 0])))
 	jitter_percentage = (jitter / np.mean(f0[f0 > 0])) * 100
+	
+	
+	# the files not saved to folder can probably be overwritten all the time right, in that case, I make another variable for the .wav file name
+	file_path_overwrite = os.path.join(data_folders["participant_data_dir"], "audio_to_overwrite.wav")
+	
+	# set stimuli scaling
+	stim_scale = 0.35 #stimuli are 280x280 pixels at .4x scale. sreen size is 1024x768
 	__end__
+	set _prepare ""
+
+define sequence experiment
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run loading_packages True
+	run learning_session_setup always
+	run library_function_setup True
+	run constants_memoryAlloc_setup True
+	run present_questions True
+	run instructions True
+	run slimstampen_setup always
+	run while_there_is_time_left always
+
+define sketchpad instructions
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Instructions:<br /><br />Your task during this experiment will be learn the outlines of various countries. This can be quite challenging, so don't worry if you get too many wrong. However, still try your best!<br /><br />The first time you see a new country outline, the name and how it is pronounced will be played out loud. The rest of the experiment will consist of random countries that will be shown to you and you have to press SPACE to start your response. Say the country name and you get feedback with if you were correct or incorrect. <br /><br />After each question, you will be asked whether you were confident in your answer (press A) or doubtful (press L).<br /><br />The experiment should take around 30 minutes.<br /><br />Press SPACE when you've understood and are ready to start!" x=0 y=0 z_index=0
+
+define inline_script learning_session_setup
+	set description "Executes Python code"
+	set _run ""
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
-	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	#var.main_dir = "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
 	
 	# Check each trial manually for doubt
@@ -117,10 +128,26 @@ define inline_script learning_session_setup
 	var.inter_trial_interval = 200
 	
 	var.show_demo = True
+	__end__
+
+define inline_script library_function_setup
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	import os
+	import csv
+	import librosa
+	import numpy as np
+	import speech_recognition as sr
+	import soundfile as sf
+	import jellyfish as jf
+	import pyttsx3
 	
+	###########################
+	# Functions can be found below
+	###########################
 	
 	# Create folders
-	# Creates folders for training data
 	def createFolders():
 	    folder_list = {}
 	    
@@ -157,6 +184,76 @@ define inline_script learning_session_setup
 		    os.makedirs(doubt_wrong_dir)
 	    folder_list["doubt_wrong"] = doubt_wrong_dir
 	    return folder_list
+	
+	def doubtPrompt(my_canvas, my_keyboard):
+	    # Ask participant if the response was doubtful/confident
+	    # Returns True if doubtful, False if confident
+	    my_canvas.clear()
+	    basicUIfeatures(my_canvas, False)
+	    my_canvas.image(prompt, scale=stim_scale, y=-200)
+	    my_canvas.text("How confident was your last answer?", y = 0, font_size = 20, color = "black")
+	    my_canvas.text("Press \"A\" for confident", y = 50, font_size = 20, color = "black")
+	    my_canvas.text("and \"L\" key for doubtful.", y = 100, font_size = 20, color = "black")
+	    my_canvas.prepare()
+	    my_canvas.show()
+			
+	    clock.sleep(1500)
+		
+		# Lock user in this loop till they respond with "space" or "z" key.
+	    while True:
+		    # Get keypress
+		    key, time = my_keyboard.get_key()
+				
+		    if key == "a":
+			    doubt = False
+			    break
+		    elif key == "l":
+			    doubt = True
+			    break
+		
+	    return doubt
+	
+	# Checks for the phonetic similarity between two phrases
+	def checkSimilarity(answer, speech_answer):
+	    # Split answers into list of words
+	    answer_list = answer.split()
+	    speech_list = speech_answer.split()
+	    
+	    # If not same amount of words, probably wrong answer
+	    if len(answer_list) != len(speech_list):
+	        return False
+	    
+	    # Check whether every word in both lists sound similar
+	    for idx in range(len(answer_list)):
+	        encoding = jf.metaphone(answer_list[idx]) == jf.metaphone(speech_list[idx])
+	        if encoding == False:
+	            return False
+	    
+	    return True
+	
+	def speakPhrase(text):
+	    engine = pyttsx3.init("sapi5")
+	    engine.setProperty('rate', 140)
+	    print()
+	    engine.say(text)
+	    try:
+	        engine.runAndWait()
+	    except Exception:
+	        pass
+	    engine.runAndWait()
+	
+	def basicUIfeatures(canvas, response_box = True): #280x280 pixels at .4x scale. sreen size is 1024x768
+	    canvas['stimulus_box_shadow'] = Rect(x=-147, y=-320, w=300, h=300, color="black", fill=True) #371 & 374
+	    canvas['stimulus_box'] = Rect(x=-150, y=-324, w=300, h=300, color="white", fill=True)
+	    if response_box == True:
+	        canvas['response_box_shadow'] = Rect(x=-149, y=51, w=303, h=53, color="black", fill=True)
+	        canvas['response_box'] = Rect(x=-150, y=50, w=300, h=50, color="white", fill=True)
+	               
+	def askConfidence(canvas):
+	    my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
+	    
+	def splitClasses(audio_data, transcription, sample_type, sample_rate): # sample_type = doubt or confident
+	    sf.write(f"{main_dir}\\speech_recognition\\recordingsV2\\{sample_type}\\{transcription}_{sample_type}.wav", audio_data, sample_rate)
 	__end__
 
 define sketchpad loading_packages
@@ -217,9 +314,6 @@ define inline_script present_questions
 	    writer.writerow(answer_list)
 	__end__
 	___prepare__
-	import csv
-	import os
-	
 	question_types = ["subj_nr", "age", "gender", "nationality", "geo_familiarity"]
 	list_of_questions=[
 	    "What is your age?",
@@ -237,11 +331,6 @@ define inline_script present_questions
 define inline_script present_trial
 	set description "Executes Python code"
 	___run__
-	import speech_recognition as sr
-	import librosa
-	import numpy as np
-	import os
-	
 	trial_start_time = clock.time()
 	
 	#data_folders = createFolders() <-- we can set fixed variables like these (or others we want to initialize earlier on) in e.g. learning_session inline script.
@@ -249,15 +338,10 @@ define inline_script present_trial
 	# Determine path of recording file
 	audio_name = f"subj_{var.subject_nr}_trial_{var.trial_num}.wav"
 	
-	# the files not saved to folder can probably be overwritten all the time right, in that case, I make another variable for the .wav file name
-	file_path_overwrite = os.path.join(data_folders["participant_data_dir"], "audio_to_overwrite.wav")
-	
 	# Get next fact from the model
 	next_fact, new = m.get_next_fact(current_time = trial_start_time)
 	prompt = next_fact.question
 	answer = next_fact.answer
-	
-	stim_scale = 0.35 #stimuli are 280x280 pixels at .4x scale. sreen size is 1024x768
 	
 	my_canvas = Canvas()
 	
@@ -278,7 +362,7 @@ define inline_script present_trial
 		# --- NEW STIMULUS ---
 		# --------------------
 		
-		clock.sleep(500)
+		clock.sleep(200)
 		speakPhrase(answer)
 		clock.sleep(500)
 		
@@ -474,137 +558,7 @@ define inline_script present_trial
 	if clock.time() - var.session_start_time >= var.session_duration:
 		var.time_up = True
 	__end__
-	___prepare__
-	import soundfile as sf
-	import jellyfish as jf
-	import os
-	import pyttsx3
-	
-	# Creates folders for training data
-	def createFolders():
-	    folder_list = {}
-	    
-	    participant_dir = os.path.join(var.main_dir, "participant_data")
-	    folder_list["participant_dir"] = participant_dir
-	    
-	    # Trial info
-	    trial_info_dir = os.path.join(var.main_dir, "participant_data", "trial_info")
-	    if not os.path.exists(trial_info_dir):
-	            os.makedirs(trial_info_dir)
-	    folder_list["trial_info"] = trial_info_dir
-	    
-	    # Confident - correct answer
-	    conf_corr_dir = os.path.join(var.main_dir, "participant_data", "conf_corr")
-	    if not os.path.exists(conf_corr_dir):
-		    os.makedirs(conf_corr_dir)
-	    folder_list["conf_corr"] = conf_corr_dir
-	    
-	    # Confident - wrong answer
-	    conf_wrong_dir = os.path.join(var.main_dir, "participant_data", "conf_wrong")
-	    if not os.path.exists(conf_wrong_dir):
-		    os.makedirs(conf_wrong_dir)
-	    folder_list["conf_wrong"] = conf_wrong_dir
-	    
-	    # Doubt - correct answer
-	    doubt_corr_dir = os.path.join(var.main_dir, "participant_data", "doubt_corr")
-	    if not os.path.exists(doubt_corr_dir):
-		    os.makedirs(doubt_corr_dir)
-	    folder_list["doubt_corr"] = doubt_corr_dir
-	    
-	    # Doubt - wrong answer
-	    doubt_wrong_dir = os.path.join(var.main_dir, "participant_data", "doubt_wrong")
-	    if not os.path.exists(doubt_wrong_dir):
-		    os.makedirs(doubt_wrong_dir)
-	    folder_list["doubt_wrong"] = doubt_wrong_dir
-	    return folder_list
-	
-	def doubtPrompt(my_canvas, my_keyboard):
-	    # Ask participant if the response was doubtful/confident
-	    # Returns True if doubtful, False if confident
-	    my_canvas.clear()
-	    basicUIfeatures(my_canvas, False)
-	    my_canvas.image(prompt, scale=stim_scale, y=-200)
-	    my_canvas.text("How confident was your last answer?", y = 0, font_size = 20, color = "black")
-	    my_canvas.text("Press \"A\" for confident", y = 50, font_size = 20, color = "black")
-	    my_canvas.text("and \"L\" key for doubtful.", y = 100, font_size = 20, color = "black")
-	    my_canvas.prepare()
-	    my_canvas.show()
-			
-	    clock.sleep(1500)
-		
-		# Lock user in this loop till they respond with "space" or "z" key.
-	    while True:
-		    # Get keypress
-		    key, time = my_keyboard.get_key()
-				
-		    if key == "a":
-			    doubt = False
-			    break
-		    elif key == "l":
-			    doubt = True
-			    break
-		
-		# Determine "doubt" and "conf" folder
-	    #doubt_dir = os.path.join(audio_dir, "doubt")
-	    #conf_dir = os.path.join(audio_dir, "conf")
-	    #if not os.path.exists(doubt_dir):
-		#    os.mkdir(doubt_dir)
-	    #if not os.path.exists(conf_dir):
-		#    os.mkdir(conf_dir)
-			
-	    #if not waitedTooLong:
-		#    if doubt == "confident":
-		#	    file_path = os.path.join(conf_dir, audio_name)
-		  #  elif doubt == "doubt":
-			#    file_path = os.path.join(doubt_dir, audio_name)
-		   # with open(file_path, "wb") as f:
-		#	    f.write(audio.get_wav_data())
-	    return doubt
-	
-	# Checks for the phonetic similarity between two phrases
-	def checkSimilarity(answer, speech_answer):
-	    # Split answers into list of words
-	    answer_list = answer.split()
-	    speech_list = speech_answer.split()
-	    
-	    # If not same amount of words, probably wrong answer
-	    if len(answer_list) != len(speech_list):
-	        return False
-	    
-	    # Check whether every word in both lists sound similar
-	    for idx in range(len(answer_list)):
-	        encoding = jf.metaphone(answer_list[idx]) == jf.metaphone(speech_list[idx])
-	        if encoding == False:
-	            return False
-	    
-	    return True
-	
-	def speakPhrase(text):
-	    engine = pyttsx3.init("sapi5")
-	    engine.setProperty('rate', 140)
-	    print()
-	    engine.say(text)
-	    try:
-	        engine.runAndWait()
-	    except Exception:
-	        pass
-	    engine.runAndWait()
-	
-	def basicUIfeatures(canvas, response_box = True): #280x280 pixels at .4x scale. sreen size is 1024x768
-	    canvas['stimulus_box_shadow'] = Rect(x=-147, y=-320, w=300, h=300, color="black", fill=True) #371 & 374
-	    canvas['stimulus_box'] = Rect(x=-150, y=-324, w=300, h=300, color="white", fill=True)
-	    if response_box == True:
-	        canvas['response_box_shadow'] = Rect(x=-149, y=51, w=303, h=53, color="black", fill=True)
-	        canvas['response_box'] = Rect(x=-150, y=50, w=300, h=50, color="white", fill=True)
-	               
-	def askConfidence(canvas):
-	    my_canvas.text("How confident was your last answer?", y = 100, font_size = 20, color = "black")
-	    
-	def splitClasses(audio_data, transcription, sample_type, sample_rate): # sample_type = doubt or confident
-	    sf.write(f"{main_dir}\\speech_recognition\\recordingsV2\\{sample_type}\\{transcription}_{sample_type}.wav", audio_data, sample_rate)
-	
-	    
-	__end__
+	set _prepare ""
 
 define inline_script save_data
 	set description "Executes Python code"
