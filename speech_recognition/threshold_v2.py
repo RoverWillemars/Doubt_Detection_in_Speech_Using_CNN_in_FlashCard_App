@@ -187,27 +187,29 @@ def collect_features(audio_files, doubt_dummy):
     return pd.DataFrame(data)
 
 # Function to get all audio files rated and stored in excel file
-def get_audio_files_from_directory(directory, file_list):
+def get_audio_files_from_directory(directory):
     audio_files = []
-    for path, subdirs, filenames in os.walk(directory):
-        for filename in filenames:
-            if filename in file_list: # edit
-                audio_files.append(os.path.join(path, filename))
+    for filename in os.listdir(directory):
+        if filename.endswith('.wav'):
+            audio_files.append(os.path.join(directory, filename))
     return audio_files
 
 # specify path
-os.chdir("C:/users/remon/OneDrive/Bureaublad/BCN_ReMa2/User_Modelling/speech_data")
-dir = os.getcwd()
+#os.chdir("C:/Users/rlina/Documents/Block1/User modelling/gitcode/user-modelling-project-neural-navigators/speech_recognition/Data")
+#dir = os.getcwd()
+
+confident_dir = 'speech_recognition/Data/confident/'
+doubtful_dir = 'speech_recognition/Data/doubtful/'
 
 # read excel sheet
-df = pd.read_excel('rating.xlsx')
-df = df.iloc[:,0:2].dropna()
-confidence_list = df.loc[df["doubt (0-1)"] == 0, "filename"].tolist()
-doubtful_list = df.loc[df["doubt (0-1)"] == 1, "filename"].tolist()
+#df = pd.read_excel('rating.xlsx')
+#df = df.iloc[:,0:2].dropna()
+#confidence_list = df.loc[df["doubt (0-1)"] == 0, "filename"].tolist()
+#doubtful_list = df.loc[df["doubt (0-1)"] == 1, "filename"].tolist()
 
 # Get all audio files from the directories
-confident_files = get_audio_files_from_directory(dir, confidence_list)
-doubtful_files = get_audio_files_from_directory(dir, doubtful_list)
+confident_files = get_audio_files_from_directory(confident_dir)
+doubtful_files = get_audio_files_from_directory(doubtful_dir)
 
 # Collect features for confident and doubtful responses
 confident_df = collect_features(confident_files, 0)
@@ -215,7 +217,13 @@ doubtful_df = collect_features(doubtful_files, 1)
 
 # concatenate
 both_df = pd.concat([confident_df, doubtful_df])
+duplicates = both_df.index.duplicated()
+print(both_df[duplicates])
 
+df = both_df.reset_index(drop=True)
+both_df = pd.concat([confident_df, doubtful_df])
+duplicates = both_df.index.duplicated()
+print(both_df[duplicates])
 # plot
 plot_pairwise_combinations(both_df, "Doubt")
 plot_pairwise_combinations_in_grid(both_df, "Doubt", 3)

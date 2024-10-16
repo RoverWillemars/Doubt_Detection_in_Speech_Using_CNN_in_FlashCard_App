@@ -84,8 +84,8 @@ def analyze_confidence(model, audio_file):
 
 if __name__ == "__main__":
     # Directory paths
-    confident_dir = 'speech_recognition/recordings/confident/'
-    doubtful_dir = 'speech_recognition/recordings/doubtful/'
+    confident_dir = 'speech_recognition/Data/confident/'
+    doubtful_dir = 'speech_recognition/Data/doubtful/'
 
     # Prepare dataset and train SVM model
     features, labels = prepare_dataset(confident_dir, doubtful_dir)
