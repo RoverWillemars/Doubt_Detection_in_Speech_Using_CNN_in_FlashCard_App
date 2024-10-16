@@ -38,8 +38,7 @@ set background "#fcf7f0"
 
 define inline_script append_data
 	set description "Executes Python code"
-	set _run ""
-	___prepare__
+	___run__
 	# save the data of the first block into a seperate variable for appending later
 	dat_b3 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
 	
@@ -48,11 +47,11 @@ define inline_script append_data
 	final_output_path = (os.path.join(data_folders["final_info"], f"subj_{var.subject_nr}_final.csv"))	
 	dat_total.to_csv(final_output_path, index=False) 
 	__end__
+	set _prepare ""
 
 define loop block2_loop
-	set source_file ""
 	set source table
-	set repeat 100
+	set repeat 10
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
@@ -65,6 +64,27 @@ define loop block2_loop
 define inline_script block2_setup
 	set description "Executes Python code"
 	___run__
+	# save the data of the first block into a seperate variable for appending later
+	dat_b1 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
+	
+	if experiment_order == 0 or experiment_order == 1:
+		image_set = 1
+		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_1")
+	elif experiment_order == 2 or experiment_order == 3:
+		image_set = 2
+		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_2")
+	     
+	if experiment_order == 0 or experiment_order == 2:
+		model_type = "Standard"
+	elif experiment_order == 1 or experiment_order == 3:
+		model_type = "Doubt-Detection"
+	    
+	var.checkDoubt = False # no longer ask for doubt/confidence after trial
+	
+	# block number
+	block_n = 2
+	
+	# initialize new model
 	m = SpacingModel()
 	
 	countries = loadImages()
@@ -76,29 +96,11 @@ define inline_script block2_setup
 	for fact in facts:
 		m.add_fact(fact)
 	__end__
-	___prepare__
-	# save the data of the first block into a seperate variable for appending later
-	dat_b1 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
-	
-	if experiment_order == 0 or experiment_order == 1:
-	    images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_control")
-	elif experiment_order == 2 or experiment_order == 3:
-	     images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_doubt")
-	     
-	if experiment_order == 0 or experiment_order == 2:
-	    model_type = "Standard"
-	elif experiment_order == 1 or experiment_order == 3:
-	    model_type = "Doubt-Detection"
-	    
-	var.checkDoubt = False # no longer ask for doubt/confidence after trial
-	
-	# block number
-	block_n = 2
-	__end__
+	set _prepare ""
 
 define loop block3_loop
 	set source table
-	set repeat 100
+	set repeat 10
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
@@ -111,6 +113,25 @@ define loop block3_loop
 define inline_script block3_setup
 	set description "Executes Python code"
 	___run__
+	# save the data of the first block into a seperate variable for appending later
+	dat_b2 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
+	
+	if experiment_order == 0 or experiment_order == 1:
+		image_set = 2
+		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_2")
+	elif experiment_order == 2 or experiment_order == 3:
+		image_set = 1
+		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_1") 
+	     
+	if experiment_order == 0 or experiment_order == 2:
+		model_type = "Doubt-detection"
+	elif experiment_order == 1 or experiment_order == 3:
+		model_type = "Standard"
+	
+	# block number
+	block_n = 3
+	
+	# initialize new model
 	m = SpacingModel()
 	
 	countries = loadImages()
@@ -122,23 +143,7 @@ define inline_script block3_setup
 	for fact in facts:
 		m.add_fact(fact)
 	__end__
-	___prepare__
-	# save the data of the first block into a seperate variable for appending later
-	dat_b2 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
-	
-	if experiment_order == 0 or experiment_order == 1:
-	    images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_doubt")
-	elif experiment_order == 2 or experiment_order == 3:
-	     images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_control") 
-	     
-	if experiment_order == 0 or experiment_order == 2:
-	    model_type = "Doubt-detection"
-	elif experiment_order == 1 or experiment_order == 3:
-	    model_type = "Standard"
-	
-	# block number
-	block_n = 3
-	__end__
+	set _prepare ""
 
 define inline_script constants_memoryAlloc_setup
 	set description "Executes Python code"
@@ -188,6 +193,9 @@ define inline_script constants_memoryAlloc_setup
 	# block number
 	block_n = 1
 	
+	# stimuli set
+	image_set = 0
+	
 	# standard model 1st block
 	model_type = "Standard"
 	__end__
@@ -204,16 +212,29 @@ define sequence experiment
 	run instructions True
 	run slimstampen_setup always
 	run while_there_is_time_left always
+	run firstblockcompleted True
 	run block2_setup True
 	run block2_loop True
+	run secondblockcompleted True
 	run block3_setup True
 	run block3_loop True
 	run append_data True
+	run experimentcompleted True
+
+define sketchpad experimentcompleted
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Experiment completed! <br /><br />Thank you so much for your participation!<br /><br />Press spacebar to close the window" x=0 y=0 z_index=0
+
+define sketchpad firstblockcompleted
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="First block completed, you can take a short break. <br /><br />Press space when you are ready to continue<br />" x=0 y=0 z_index=0
 
 define sketchpad instructions
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Instructions:<br /><br />Your task during this experiment will be learn the outlines of various countries. This can be quite challenging, so don't worry if you get too many wrong. However, still try your best!<br /><br />The first time you see a new country outline, the name and how it is pronounced will be played out loud. The rest of the experiment will consist of random countries that will be shown to you and you have to press SPACE to start your response. Say the country name and you get feedback with if you were correct or incorrect. <br /><br />After each question, you will be asked whether you were confident in your answer (press A) or doubtful (press L).<br /><br />The experiment should take around 30 minutes.<br /><br />Press SPACE when you've understood and are ready to start!" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=16 html=yes show_if=always text="Instructions:<br /><br />Your task during this experiment will be learn the outlines of various countries.<br />This can be quite challenging, so don't worry if you get some wrong. <br />However, still try your best!<br /><br />The first time you see a new country outline, the name and<br />how it is pronounced will be played out loud. <br />The rest of the experiment will consist of random countries <br />that will be shown to you and you have to press SPACE to start your response.<br />Say the country name and you get feedback with if you were correct or incorrect. <br /><br />After each question, you will be asked whether you<br />were confident in your answer (press A) or doubtful (press L).<br /><br />The experiment should take around 30 minutes.<br /><br />Press SPACE when you've understood and are ready to start!" x=0 y=0 z_index=0
 
 define inline_script learning_session_setup
 	set description "Executes Python code"
@@ -506,7 +527,7 @@ define inline_script present_trial
 				rt = clock.time() - trial_start_time
 				break
 		
-		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, model_type, experiment_order) 
+		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order) 
 			
 		m.register_response(response) 
 	else:
@@ -635,16 +656,16 @@ define inline_script present_trial
 			doubt = doubtPrompt(my_canvas, my_keyboard)
 		
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, doubt, block_n, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, doubt, block_n, image_set, model_type, experiment_order)
 			elif waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
 		
 		# if there's no doubt check then
 		elif not var.checkDoubt:
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, np.nan, block_n, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, np.nan, block_n, image_set, model_type, experiment_order)
 			elif waitedTooLong:	
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
 		
 		# Register response and write to csv 
 		m.register_response(response) 	
@@ -678,6 +699,11 @@ define inline_script present_trial
 	__end__
 	set _prepare ""
 
+define sketchpad secondblockcompleted
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Second block completed, you can take a short break. <br /><br />Press space when you are ready to continue<br />" x=0 y=0 z_index=0
+
 define inline_script slimstampen_setup
 	set description "Executes Python code"
 	___run__
@@ -702,7 +728,7 @@ define inline_script slimstampen_setup
 	from collections import namedtuple
 	
 	Fact = namedtuple("Fact", "fact_id, question, answer")
-	Response = namedtuple("Response","fact, start_time, rt, correct, f0_mean, vol_mean, f0_CoV, vol_CoV, jit_perc, doubt, block_n, model_type, experiment_order")
+	Response = namedtuple("Response","fact, start_time, rt, correct, f0_mean, vol_mean, f0_CoV, vol_CoV, jit_perc, doubt, block_n, image_set, model_type, experiment_order")
 	#Response = namedtuple("Response","fact, start_time, rt, correct")
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
@@ -1018,9 +1044,8 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
-	set source_file ""
 	set source table
-	set repeat 100
+	set repeat 10
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
