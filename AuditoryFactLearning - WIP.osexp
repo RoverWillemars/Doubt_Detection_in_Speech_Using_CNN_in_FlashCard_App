@@ -36,6 +36,110 @@ set clock_backend legacy
 set canvas_backend legacy
 set background "#fcf7f0"
 
+define inline_script append_data
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	# save the data of the first block into a seperate variable for appending later
+	dat_b3 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
+	
+	# concatenate data from three blocks
+	dat_total = pd.concat([dat_b1, dat_b2, dat_b3], ignore_index=True)
+	final_output_path = (os.path.join(data_folders["final_info"], f"subj_{var.subject_nr}_final.csv"))	
+	dat_total.to_csv(final_output_path, index=False) 
+	__end__
+
+define loop block2_loop
+	set source_file ""
+	set source table
+	set repeat 100
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 1
+	set continuous no
+	set break_if_on_first yes
+	set break_if "[time_up] = yes"
+	setcycle 0 ignore_this_variable 1
+	run trial_sequence
+
+define inline_script block2_setup
+	set description "Executes Python code"
+	___run__
+	m = SpacingModel()
+	
+	countries = loadImages()
+	
+	facts = []
+	for idx, name in enumerate(countries.keys()):
+		facts.append(Fact(idx+1, countries[name], name.lower()))
+	
+	for fact in facts:
+		m.add_fact(fact)
+	__end__
+	___prepare__
+	# save the data of the first block into a seperate variable for appending later
+	dat_b1 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
+	
+	if experiment_order == 0 or experiment_order == 1:
+	    images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_control")
+	elif experiment_order == 2 or experiment_order == 3:
+	     images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_doubt")
+	     
+	if experiment_order == 0 or experiment_order == 2:
+	    model_type = "Standard"
+	elif experiment_order == 1 or experiment_order == 3:
+	    model_type = "Doubt-Detection"
+	    
+	var.checkDoubt = False # no longer ask for doubt/confidence after trial
+	
+	# block number
+	block_n = 2
+	__end__
+
+define loop block3_loop
+	set source table
+	set repeat 100
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 1
+	set continuous no
+	set break_if_on_first yes
+	set break_if "[time_up] = yes"
+	setcycle 0 ignore_this_variable 1
+	run trial_sequence
+
+define inline_script block3_setup
+	set description "Executes Python code"
+	___run__
+	m = SpacingModel()
+	
+	countries = loadImages()
+	
+	facts = []
+	for idx, name in enumerate(countries.keys()):
+		facts.append(Fact(idx+1, countries[name], name.lower()))
+	
+	for fact in facts:
+		m.add_fact(fact)
+	__end__
+	___prepare__
+	# save the data of the first block into a seperate variable for appending later
+	dat_b2 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
+	
+	if experiment_order == 0 or experiment_order == 1:
+	    images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_doubt")
+	elif experiment_order == 2 or experiment_order == 3:
+	     images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_control") 
+	     
+	if experiment_order == 0 or experiment_order == 2:
+	    model_type = "Doubt-detection"
+	elif experiment_order == 1 or experiment_order == 3:
+	    model_type = "Standard"
+	
+	# block number
+	block_n = 3
+	__end__
+
 define inline_script constants_memoryAlloc_setup
 	set description "Executes Python code"
 	___run__
@@ -75,6 +179,17 @@ define inline_script constants_memoryAlloc_setup
 	
 	# set stimuli scaling
 	stim_scale = 0.35 #stimuli are 280x280 pixels at .4x scale. sreen size is 1024x768
+	
+	
+	# randomly pick order of stimuli-set and system-type for subject
+	# (in total 2*2 unique combinations)
+	experiment_order = randrange(0,4)
+	
+	# block number
+	block_n = 1
+	
+	# standard model 1st block
+	model_type = "Standard"
 	__end__
 	set _prepare ""
 
@@ -89,6 +204,11 @@ define sequence experiment
 	run instructions True
 	run slimstampen_setup always
 	run while_there_is_time_left always
+	run block2_setup True
+	run block2_loop True
+	run block3_setup True
+	run block3_loop True
+	run append_data True
 
 define sketchpad instructions
 	set duration keypress
@@ -138,6 +258,7 @@ define inline_script library_function_setup
 	import csv
 	import librosa
 	import numpy as np
+	from random import randrange
 	import speech_recognition as sr
 	import soundfile as sf
 	import jellyfish as jf
@@ -159,6 +280,12 @@ define inline_script library_function_setup
 	    if not os.path.exists(trial_info_dir):
 	            os.makedirs(trial_info_dir)
 	    folder_list["trial_info"] = trial_info_dir
+	    
+	    # Final info
+	    final_info_dir = os.path.join(trial_info_dir, "final")
+	    if not os.path.exists(final_info_dir):
+	            os.makedirs(final_info_dir)
+	    folder_list["final_info"] = final_info_dir
 	    
 	    # Confident - correct answer
 	    conf_corr_dir = os.path.join(var.main_dir, "participant_data", "conf_corr")
@@ -379,7 +506,7 @@ define inline_script present_trial
 				rt = clock.time() - trial_start_time
 				break
 		
-		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan) 
+		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, model_type, experiment_order) 
 			
 		m.register_response(response) 
 	else:
@@ -425,7 +552,7 @@ define inline_script present_trial
 		error = ""
 		if waitedTooLong: # need to check whether it should be recorded like this
 			error = "Answer took too long"
-			#response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+	
 		else:
 			# Save audio as wav file (for feature extraction)
 			with open(file_path_overwrite, "wb") as f:
@@ -503,34 +630,25 @@ define inline_script present_trial
 			
 			# -----------------------
 		
-			# Log response (if features are extracted)
-			#response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, doubt)
-		
-		# Register response
-		#m.register_response(response) 
-		
 		# Show doubt/confident prompt
 		if var.checkDoubt:
 			doubt = doubtPrompt(my_canvas, my_keyboard)
-	
-		# this logs the data after every trial, instead of just the end
-		#dat = m.export_data(os.path.join(trialInfo_dir, f"subj_{var.subject_nr}.csv"))
 		
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, doubt)
+				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, doubt, block_n, model_type, experiment_order)
 			elif waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, model_type, experiment_order)
 		
 		# if there's no doubt check then
 		elif not var.checkDoubt:
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, np.nan)
+				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, np.nan, block_n, model_type, experiment_order)
 			elif waitedTooLong:	
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, model_type, experiment_order)
 		
 		# Register response and write to csv 
 		m.register_response(response) 	
-		dat = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}.csv"))	
+		dat = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
 		
 		# Save to data folders
 		if not waitedTooLong and var.checkDoubt:
@@ -560,15 +678,6 @@ define inline_script present_trial
 	__end__
 	set _prepare ""
 
-define inline_script save_data
-	set description "Executes Python code"
-	___run__
-	# Write the SlimStampen data to the OpenSesame log file
-	#dat = m.export_data()
-	#log.write(dat)
-	__end__
-	set _prepare ""
-
 define inline_script slimstampen_setup
 	set description "Executes Python code"
 	___run__
@@ -593,12 +702,12 @@ define inline_script slimstampen_setup
 	from collections import namedtuple
 	
 	Fact = namedtuple("Fact", "fact_id, question, answer")
-	Response = namedtuple("Response","fact, start_time, rt, correct, f0_mean, vol_mean, f0_CoV, vol_CoV, jit_perc, doubt")
+	Response = namedtuple("Response","fact, start_time, rt, correct, f0_mean, vol_mean, f0_CoV, vol_CoV, jit_perc, doubt, block_n, model_type, experiment_order")
 	#Response = namedtuple("Response","fact, start_time, rt, correct")
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
 	# ------ MAKE SURE THIS DIRECTORY CONTAINS ONLY THE REQUIRED IMAGES -----
-	images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines")
+	images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_training") # this is always set_1 for first block
 	
 	def loadImages():
 	    images = {}
@@ -909,6 +1018,7 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
+	set source_file ""
 	set source table
 	set repeat 100
 	set order random
