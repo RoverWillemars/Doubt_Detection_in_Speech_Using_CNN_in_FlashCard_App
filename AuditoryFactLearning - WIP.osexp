@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -64,7 +64,8 @@ define loop block2_loop
 define inline_script block2_setup
 	set description "Executes Python code"
 	___run__
-	# save the data of the first block into a seperate variable for appending later
+	# save the data of the first block into a seperate variable for appending map
+	print(m.get_mastered_facts(clock.time()))
 	dat_b1 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
 	
 	if experiment_order == 0 or experiment_order == 1:
@@ -84,8 +85,13 @@ define inline_script block2_setup
 	# block number
 	block_n = 2
 	
+	# Check whetther doubt detection should be included in next block
+	includeDoubt = False
+	if model_type == "Doubt-Detection":
+		includeDoubt = True
+	
 	# initialize new model
-	m = SpacingModel()
+	m = SpacingModel(includeDoubt = includeDoubt)
 	
 	countries = loadImages()
 	
@@ -124,15 +130,20 @@ define inline_script block3_setup
 		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_1") 
 	     
 	if experiment_order == 0 or experiment_order == 2:
-		model_type = "Doubt-detection"
+		model_type = "Doubt-Detection"
 	elif experiment_order == 1 or experiment_order == 3:
 		model_type = "Standard"
 	
 	# block number
 	block_n = 3
 	
+	# Check whetther doubt detection should be included in next block
+	includeDoubt = False
+	if model_type == "Doubt-Detection":
+		includeDoubt = True
+	
 	# initialize new model
-	m = SpacingModel()
+	m = SpacingModel(includeDoubt = includeDoubt)
 	
 	countries = loadImages()
 	
@@ -242,8 +253,8 @@ define inline_script learning_session_setup
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
-	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	#var.main_dir = "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
 	
 	# Check each trial manually for doubt
@@ -258,13 +269,13 @@ define inline_script learning_session_setup
 	var.session_start_time = clock.time()
 	
 	# Session will run until time_up == True
-	var.time_up = True
+	var.time_up = False
 	
 	# Keep track of trial number
 	var.trial_num = 1
 	
 	# Settings
-	var.session_duration = 10000
+	var.session_duration = 600000
 	var.feedback_duration = 800
 	var.inter_trial_interval = 200
 	
@@ -696,6 +707,10 @@ define inline_script present_trial
 	# Check if time is up
 	if clock.time() - var.session_start_time >= var.session_duration:
 		var.time_up = True
+	
+	# Check whether all items have been mastered
+	perc_mastered_items = len(m.get_mastered_facts(clock.time())) / len(m.facts)
+	print(perc_mastered_items)
 	__end__
 	set _prepare ""
 
@@ -707,7 +722,7 @@ define sketchpad secondblockcompleted
 define inline_script slimstampen_setup
 	set description "Executes Python code"
 	___run__
-	m = SpacingModel()
+	m = SpacingModel(includeDoubt = False)
 	
 	countries = loadImages()
 	
@@ -753,6 +768,7 @@ define inline_script slimstampen_setup
 	    DEFAULT_ALPHA = 0.3
 	    C = 0.25
 	    F = 1.0
+	    MASTERY_TIME = 600000 # 1 hours
 	    
 	    # Doubt modifiers
 	    CONF_CORR = 1
@@ -760,11 +776,15 @@ define inline_script slimstampen_setup
 	    DOUBT_CORR = 1
 	    DOUBT_WRNG = 1
 	
-	    def __init__(self):
+	    def __init__(self, includeDoubt):
 	        self.facts = []
 	        self.responses = []
+	        self.includeDoubt = includeDoubt
 	
 	    def get_doubt_mod(self, correct, doubt):
+	        if not self.includeDoubt:
+	            # No doubt modification takes place
+	            return 1
 	        if not doubt and correct:
 	            # Confident and correct answer
 	            return self.CONF_CORR
@@ -830,6 +850,14 @@ define inline_script slimstampen_setup
 	        # If none of the previously seen facts has an activation below the threshold, return a new fact
 	        return((not_seen_facts[0][0], True))
 	
+	    def get_mastered_facts(self, current_time):
+	        # Calculate all fact activations after mastery time
+	        fact_activations = [(f, self.calculate_activation(current_time + self.MASTERY_TIME, f)) for f in self.facts]
+	        # Determine which facts have been seen
+	        seen_facts = [(f, a) for (f, a) in fact_activations if a > -float("inf")]
+	        # Determine which seen facts will still be likely to be remembered after mastery time
+	        seen_facts_above_threshold = [(f, a) for (f, a) in seen_facts if a >= self.FORGET_THRESHOLD]
+	        return seen_facts_above_threshold
 	
 	    def get_rate_of_forgetting(self, time, fact):
 	        # type: (int, Fact) -> float
@@ -1016,6 +1044,15 @@ define inline_script slimstampen_setup
 	
 	        def calc_rof(row):
 	            return(self.get_rate_of_forgetting(row["start_time"] + 1, row["fact"]))
+	            
+	        def calc_mastery(row):
+	            # Get Fact object
+	            fact = [f for f in self.facts if f.fact_id == row["fact_id"]][0]
+	            # Calculate activation for current fact
+	            activation = self.calculate_activation(row["start_time"] + self.MASTERY_TIME, fact)
+	            if activation >= self.FORGET_THRESHOLD:
+	                return True
+	            return False
 	
 	        dat_resp = pd.DataFrame(self.responses)
 	        dat_facts = pd.DataFrame([r.fact for r in self.responses])
@@ -1024,6 +1061,8 @@ define inline_script slimstampen_setup
 	
 	        # Add column for rate of forgetting estimate after each observation
 	        dat["alpha"] = dat.apply(calc_rof, axis = 1)
+	        # Add column for mastery after each observation
+	        dat["mastery"] = dat.apply(calc_mastery, axis = 1)
 	        dat.drop(columns = "fact", inplace = True)
 	
 	        # Add trial number column
@@ -1051,7 +1090,7 @@ define loop while_there_is_time_left
 	set cycles 1
 	set continuous no
 	set break_if_on_first yes
-	set break_if "[time_up] = yes"
+	set break_if "var.time_up"
 	setcycle 0 ignore_this_variable 1
 	run trial_sequence
 
