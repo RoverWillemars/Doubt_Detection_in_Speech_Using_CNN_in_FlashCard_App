@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+set experiment_path "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -51,7 +51,7 @@ define inline_script append_data
 
 define loop block2_loop
 	set source table
-	set repeat 10
+	set repeat 4
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
@@ -66,8 +66,30 @@ define inline_script block2_setup
 	___run__
 	# save the data of the first block into a seperate variable for appending map
 	print(m.get_mastered_facts(clock.time()))
-	dat_b1 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
+	dat_b1 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))
 	
+	##### refine model with new data ####
+	
+	# Define input shape (based on mel spectrogram dimensions)
+	#input_shape = X_train.shape[1:]  # (n_mels, max_pad_len, 1)
+	
+	# fine-tune model on acquired data from first block
+	confident_dir_finetune = data_folders["confident"]
+	n_conf = len(os.listdir(confident_dir_finetune))
+	doubtful_dir_finetune = data_folders["doubtful"]
+	n_doubt = len(os.listdir(doubtful_dir_finetune))
+	
+	if n_conf > 3 and n_doubt >3:
+	    X_fine, y_fine = prepare_dataset(confident_dir_finetune, doubtful_dir_finetune)
+	
+	    # Fine-tune on a smaller set of data (this could be a new dataset or a subset of the original)
+	    X_train_fine, X_val_fine, y_train_fine, y_val_fine = train_test_split(X_fine, y_fine, test_size=0.2)  # Example small set
+	    fine_tune_history = fine_tune_model(loaded_model, X_train_fine, y_train_fine, X_val_fine, y_val_fine, fine_tune_epochs=10)
+	
+	    # Evaluate the fine-tuned model <-- unless we're going to compare models, this is not necessary I think
+	    evaluate_model(loaded_model, X_val_fine, y_val_fine)
+	
+	# set image set and system based on experiment_order
 	if experiment_order == 0 or experiment_order == 1:
 		image_set = 1
 		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_1")
@@ -106,7 +128,7 @@ define inline_script block2_setup
 
 define loop block3_loop
 	set source table
-	set repeat 10
+	set repeat 4
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
@@ -162,40 +184,20 @@ define inline_script constants_memoryAlloc_setup
 	# create folders for organizing doubtful/confident responses
 	data_folders = createFolders()
 	
-	file_path_overwrite = os.path.join(var.main_dir, 'speech_recognition', 'audioFile_memoryAllocation', 'memory_allocation.wav')
+	# load CNN
+	os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+	model_path = os.path.join(var.main_dir, "cnn_model-best.h5")
+	loaded_model = load_model(model_path)
 	
-	y, samp_rate = librosa.load(file_path_overwrite, sr=None)
-			
-	# Extract pitch using pyin (better for single pitch)
-	f0,voiced_flag, voiced_probs = librosa.pyin(y, \
-				sr=samp_rate,
-				fmin=librosa.note_to_hz('C2'),
-				fmax=librosa.note_to_hz('C7')) 
-			
-	# Extract volume (RMS energy)
-	rms = librosa.feature.rms(y=y)[0]
-			
-	# calculate mean and deviation from pitch
-	f0_mean = np.nanmean(f0)
-	f0_sd = np.nanstd(f0)
-	f0_CoV = f0_sd / f0_mean
-			    
-	# calculate mean and deviation from volume
-	volume_mean = np.mean(rms)
-	volume_sd = np.nanstd(rms)
-	volume_CoV = volume_sd /volume_mean
-			
-	# calculate jitter
-	jitter = np.mean(np.abs(np.diff(f0[f0 > 0])))
-	jitter_percentage = (jitter / np.mean(f0[f0 > 0])) * 100
-	
+	# preallocate confidence_level
+	audio_memoryAlloc = os.path.join(var.main_dir, 'speech_recognition', 'audioFile_memoryAllocation', 'memory_allocation.wav') # Provide path to audio file
+	confidence_level = predict_confidence(loaded_model, audio_memoryAlloc)
 	
 	# the files not saved to folder can probably be overwritten all the time right, in that case, I make another variable for the .wav file name
 	file_path_overwrite = os.path.join(data_folders["participant_data_dir"], "audio_to_overwrite.wav")
 	
 	# set stimuli scaling
 	stim_scale = 0.35 #stimuli are 280x280 pixels at .4x scale. sreen size is 1024x768
-	
 	
 	# randomly pick order of stimuli-set and system-type for subject
 	# (in total 2*2 unique combinations)
@@ -253,8 +255,8 @@ define inline_script learning_session_setup
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
-	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	#var.main_dir = "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
 	
 	# Check each trial manually for doubt
@@ -295,6 +297,9 @@ define inline_script library_function_setup
 	import soundfile as sf
 	import jellyfish as jf
 	import pyttsx3
+	import tensorflow as tf
+	from sklearn.model_selection import train_test_split
+	from sklearn.metrics import confusion_matrix, classification_report
 	
 	###########################
 	# Functions can be found below
@@ -319,30 +324,20 @@ define inline_script library_function_setup
 	            os.makedirs(final_info_dir)
 	    folder_list["final_info"] = final_info_dir
 	    
-	    # Confident - correct answer
-	    conf_corr_dir = os.path.join(var.main_dir, "participant_data", "conf_corr")
+	    # Confident
+	    conf_corr_dir = os.path.join(var.main_dir, "participant_data", f"subj_{var.subject_nr}_rec", "confident") # to ensure finetuning data is from respective participant 
 	    if not os.path.exists(conf_corr_dir):
 		    os.makedirs(conf_corr_dir)
-	    folder_list["conf_corr"] = conf_corr_dir
+	    folder_list["confident"] = conf_corr_dir
 	    
-	    # Confident - wrong answer
-	    conf_wrong_dir = os.path.join(var.main_dir, "participant_data", "conf_wrong")
-	    if not os.path.exists(conf_wrong_dir):
-		    os.makedirs(conf_wrong_dir)
-	    folder_list["conf_wrong"] = conf_wrong_dir
-	    
-	    # Doubt - correct answer
-	    doubt_corr_dir = os.path.join(var.main_dir, "participant_data", "doubt_corr")
+	    # Doubtful
+	    doubt_corr_dir = os.path.join(var.main_dir, "participant_data", f"subj_{var.subject_nr}_rec", "doubtful")
 	    if not os.path.exists(doubt_corr_dir):
 		    os.makedirs(doubt_corr_dir)
-	    folder_list["doubt_corr"] = doubt_corr_dir
-	    
-	    # Doubt - wrong answer
-	    doubt_wrong_dir = os.path.join(var.main_dir, "participant_data", "doubt_wrong")
-	    if not os.path.exists(doubt_wrong_dir):
-		    os.makedirs(doubt_wrong_dir)
-	    folder_list["doubt_wrong"] = doubt_wrong_dir
+	    folder_list["doubtful"] = doubt_corr_dir
 	    return folder_list
+	 
+	
 	
 	def doubtPrompt(my_canvas, my_keyboard):
 	    # Ask participant if the response was doubtful/confident
@@ -413,6 +408,103 @@ define inline_script library_function_setup
 	    
 	def splitClasses(audio_data, transcription, sample_type, sample_rate): # sample_type = doubt or confident
 	    sf.write(f"{main_dir}\\speech_recognition\\recordingsV2\\{sample_type}\\{transcription}_{sample_type}.wav", audio_data, sample_rate)
+	
+	###########################
+	# CNN Functions can be found below
+	###########################
+	
+	# Extract Mel Spectrograms
+	def extract_mel_spectrogram(audio_file, n_mels=128, n_fft=2048, hop_length=512):
+	    y, sr = librosa.load(audio_file, sr=None)
+	    spectrogram = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length)
+	    log_spectrogram = librosa.power_to_db(spectrogram, ref=np.max)
+	    return log_spectrogram
+	
+	# Define pad_spectrogram to pad spectrograms to a consistent length
+	def pad_spectrogram(spec, max_len=128):
+	    if spec.shape[1] < max_len:
+	        pad_width = max_len - spec.shape[1]
+	        spec = np.pad(spec, pad_width=((0, 0), (0, pad_width)), mode='constant')
+	    else:
+	        spec = spec[:, :max_len]
+	    return spec
+	
+	# Prepare the dataset
+	def prepare_dataset(confident_dir, doubtful_dir, max_pad_len=128):
+	    spectrograms = []
+	    labels = []
+	    # Process confident files
+	    for filename in os.listdir(confident_dir):
+	        if filename.endswith('.wav'):
+	            file_path = os.path.join(confident_dir, filename)
+	            spectrogram = extract_mel_spectrogram(file_path)
+	            spectrogram = pad_spectrogram(spectrogram, max_pad_len)
+	            spectrograms.append(spectrogram)
+	            labels.append(1)  # 1 for confident
+	    # Process doubtful files
+	    for filename in os.listdir(doubtful_dir):
+	        if filename.endswith('.wav'):
+	            file_path = os.path.join(doubtful_dir, filename)
+	            spectrogram = extract_mel_spectrogram(file_path)
+	            spectrogram = pad_spectrogram(spectrogram, max_pad_len)
+	            spectrograms.append(spectrogram)
+	            labels.append(0)  # 0 for doubtful
+	    spectrograms = np.array(spectrograms)
+	    labels = np.array(labels)
+	    # Reshape the spectrograms for CNN input (Add channel dimension)
+	    spectrograms = spectrograms[..., np.newaxis]
+	    return spectrograms, labels
+	    
+	# Step 6: Load a pre-trained model
+	def load_model(model_path="cnn_model-best.h5"):
+	    loaded_model = tf.keras.models.load_model(model_path)
+	    print(f"Model loaded from: {model_path}")
+	    return loaded_model
+	
+	# Step 7: Fine-tune the loaded model on new data
+	def fine_tune_model(model, X_train, y_train, X_val, y_val, fine_tune_epochs=10, fine_tune_lr=1e-5):
+	    # Compile the model with a lower learning rate
+	    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=fine_tune_lr),
+	                  loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+	    
+	    # Fine-tune the model
+	    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=fine_tune_epochs)
+	    return history
+	
+	# Classify audio file as confident/doubtful
+	def predict_confidence(model, audio_file, max_pad_len=128):
+	    spectrogram = extract_mel_spectrogram(audio_file)
+	    spectrogram = pad_spectrogram(spectrogram, max_pad_len)
+	    spectrogram = np.expand_dims(spectrogram, axis=-1)  # Add channel dimension
+	    spectrogram = np.expand_dims(spectrogram, axis=0)    # Add batch dimension
+	
+	    prediction = model.predict(spectrogram)
+	    predicted_class = np.argmax(prediction, axis=1)[0]  # 0 = Doubtful, 1 = Confident
+	
+	    if predicted_class == 1:
+	        return "Confident"
+	    else:
+	        return "Doubtful"
+	
+	# Evaluate model on the validation data
+	def evaluate_model(model, X_val, y_val):
+	    predictions = model.predict(X_val)
+	    predicted_classes = np.argmax(predictions, axis=1)
+	
+	    # Confusion matrix and classification report
+	    cm = confusion_matrix(y_val, predicted_classes)
+	    cr = classification_report(y_val, predicted_classes, target_names=['Doubtful', 'Confident'])
+	
+	    print("Confusion Matrix:")
+	    print(cm)
+	    print("\nClassification Report:")
+	    print(cr)
+	
+	    correct_confident = cm[1, 1]  # True positives (confident correctly classified)
+	    correct_doubtful = cm[0, 0]  # True negatives (doubtful correctly classified)
+	
+	    print(f"\nCorrectly classified Confident samples: {correct_confident}")
+	    print(f"Correctly classified Doubtful samples: {correct_doubtful}")
 	__end__
 
 define sketchpad loading_packages
@@ -423,6 +515,14 @@ define sketchpad loading_packages
 define inline_script present_questions
 	set description "Executes Python code"
 	___run__
+	# had to move this since folder_list is created after prepare phase
+	demo_path = os.path.join(data_folders["final_info"], "demo.csv") # instead of var.main_dir
+	if not os.path.exists(demo_path):
+	    with open(demo_path, 'w', newline='') as file:
+	        writer = csv.writer(file)
+	        writer.writerow(question_types)
+	
+	# create canvas
 	demo_canvas = Canvas()
 	var.q_index = 0
 	answer = ""
@@ -479,12 +579,6 @@ define inline_script present_questions
 	    "What gender do you identify as?",
 	    "What nationality are you?",
 	    "How familiar are you with geography?"]
-	
-	demo_path = os.path.join(var.main_dir, "demo.csv")
-	if not os.path.exists(demo_path):
-	    with open(demo_path, 'w', newline='') as file:
-	        writer = csv.writer(file)
-	        writer.writerow(question_types)
 	__end__
 
 define inline_script present_trial
@@ -538,7 +632,7 @@ define inline_script present_trial
 				rt = clock.time() - trial_start_time
 				break
 		
-		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order) 
+		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, block_n, image_set, model_type, experiment_order) 
 			
 		m.register_response(response) 
 	else:
@@ -601,7 +695,6 @@ define inline_script present_trial
 				print("Could not request results from Google:" + e)
 				error = "Could not request results from Google"
 				
-		
 		# Check if the response is correct
 		if error == "":
 			correct = checkSimilarity(answer, speech_response)
@@ -634,49 +727,23 @@ define inline_script present_trial
 			# -----------------------
 			# - Extracting features -
 			# -----------------------
-			print("Extracting features")
-			y, samp_rate = librosa.load(file_path_overwrite, sr=None)
-			
-			# Extract pitch using pyin (better for single pitch)
-			f0,voiced_flag, voiced_probs = librosa.pyin(y, \
-				sr=samp_rate,
-				fmin=librosa.note_to_hz('C2'),
-				fmax=librosa.note_to_hz('C7')) 
-			
-			# Extract volume (RMS energy)
-			rms = librosa.feature.rms(y=y)[0]
-			
-			# calculate mean and deviation from pitch
-			f0_mean = np.nanmean(f0)
-			f0_sd = np.nanstd(f0)
-			f0_CoV = f0_sd / f0_mean
-			    
-			# calculate mean and deviation from volume
-			volume_mean = np.mean(rms)
-			volume_sd = np.nanstd(rms)
-			volume_CoV = volume_sd /volume_mean
-			
-			# calculate jitter
-			jitter = np.mean(np.abs(np.diff(f0[f0 > 0])))
-			jitter_percentage = (jitter / np.mean(f0[f0 > 0])) * 100
-			
-			# -----------------------
+			confidence_level = predict_confidence(loaded_model, file_path_overwrite)
 		
 		# Show doubt/confident prompt
 		if var.checkDoubt:
 			doubt = doubtPrompt(my_canvas, my_keyboard)
 		
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, doubt, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, correct, doubt, confidence_level, block_n, image_set, model_type, experiment_order)
 			elif waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
 		
 		# if there's no doubt check then
 		elif not var.checkDoubt:
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, f0_mean, volume_mean, f0_CoV, volume_CoV, jitter_percentage, np.nan, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, correct,  np.nan, confidence_level, block_n, image_set, model_type, experiment_order)
 			elif waitedTooLong:	
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
 		
 		# Register response and write to csv 
 		m.register_response(response) 	
@@ -684,14 +751,10 @@ define inline_script present_trial
 		
 		# Save to data folders
 		if not waitedTooLong and var.checkDoubt:
-			if not doubt and correct:
-				file_path = os.path.join(data_folders["conf_corr"], audio_name)
-			elif not doubt and not correct:
-				file_path = os.path.join(data_folders["conf_wrong"], audio_name)
-			elif doubt and correct:
-				file_path = os.path.join(data_folders["doubt_corr"], audio_name)
-			elif doubt and not correct:
-				file_path = os.path.join(data_folders["doubt_wrong"], audio_name)
+			if doubt:
+				file_path = os.path.join(data_folders["doubtful"], audio_name)
+			elif not doubt:
+				file_path = os.path.join(data_folders["confident"], audio_name)
 			with open(file_path, "wb") as f:
 			    f.write(audio.get_wav_data())
 		
@@ -743,7 +806,7 @@ define inline_script slimstampen_setup
 	from collections import namedtuple
 	
 	Fact = namedtuple("Fact", "fact_id, question, answer")
-	Response = namedtuple("Response","fact, start_time, rt, correct, f0_mean, vol_mean, f0_CoV, vol_CoV, jit_perc, doubt, block_n, image_set, model_type, experiment_order")
+	Response = namedtuple("Response","fact, start_time, rt, correct, doubt, doubt_classificationCNN, block_n, image_set, model_type, experiment_order")
 	#Response = namedtuple("Response","fact, start_time, rt, correct")
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
@@ -771,10 +834,10 @@ define inline_script slimstampen_setup
 	    MASTERY_TIME = 600000 # 1 hours
 	    
 	    # Doubt modifiers
-	    CONF_CORR = 1
-	    CONF_WRNG = 1
-	    DOUBT_CORR = 1
-	    DOUBT_WRNG = 1
+	    CONF_CORR = 1.1 # feeling of knowing predicts retaining of memory 
+	    CONF_WRNG = 0.9 # this just to make it a bit more rigorous?
+	    DOUBT_CORR = 0.9 # Hypercorrection
+	    DOUBT_WRNG = 1 # do nothing
 	
 	    def __init__(self, includeDoubt):
 	        self.facts = []
@@ -1084,7 +1147,7 @@ define sequence trial_sequence
 
 define loop while_there_is_time_left
 	set source table
-	set repeat 10
+	set repeat 16
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
