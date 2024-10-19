@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -48,18 +48,6 @@ define inline_script append_data
 	dat_total.to_csv(final_output_path, index=False) 
 	__end__
 	set _prepare ""
-
-define loop block2_loop
-	set source table
-	set repeat 4
-	set order random
-	set description "Repeatedly runs another item"
-	set cycles 1
-	set continuous no
-	set break_if_on_first yes
-	set break_if "[time_up] = yes"
-	setcycle 0 ignore_this_variable 1
-	run trial_sequence
 
 define inline_script block2_setup
 	set description "Executes Python code"
@@ -125,18 +113,6 @@ define inline_script block2_setup
 		m.add_fact(fact)
 	__end__
 	set _prepare ""
-
-define loop block3_loop
-	set source table
-	set repeat 4
-	set order random
-	set description "Repeatedly runs another item"
-	set cycles 1
-	set continuous no
-	set break_if_on_first yes
-	set break_if "[time_up] = yes"
-	setcycle 0 ignore_this_variable 1
-	run trial_sequence
 
 define inline_script block3_setup
 	set description "Executes Python code"
@@ -227,10 +203,10 @@ define sequence experiment
 	run while_there_is_time_left always
 	run firstblockcompleted True
 	run block2_setup True
-	run block2_loop True
+	run while_there_is_time_left True
 	run secondblockcompleted True
 	run block3_setup True
-	run block3_loop True
+	run while_there_is_time_left True
 	run append_data True
 	run experimentcompleted True
 
@@ -255,8 +231,8 @@ define inline_script learning_session_setup
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
-	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	#var.main_dir = "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
 	
 	# Check each trial manually for doubt
@@ -277,7 +253,7 @@ define inline_script learning_session_setup
 	var.trial_num = 1
 	
 	# Settings
-	var.session_duration = 600000
+	var.session_duration = 900000 # 15 minutes
 	var.feedback_duration = 800
 	var.inter_trial_interval = 200
 	
@@ -767,13 +743,13 @@ define inline_script present_trial
 	my_canvas.show()
 	clock.sleep(var.inter_trial_interval)
 	
-	# Check if time is up
-	if clock.time() - var.session_start_time >= var.session_duration:
-		var.time_up = True
-	
 	# Check whether all items have been mastered
 	perc_mastered_items = len(m.get_mastered_facts(clock.time())) / len(m.facts)
 	print(perc_mastered_items)
+	
+	# Check if time is up
+	if perc_mastered_items == 1 or ((clock.time() - var.session_start_time) >= var.session_duration):
+		var.time_up = True
 	__end__
 	set _prepare ""
 
@@ -831,13 +807,13 @@ define inline_script slimstampen_setup
 	    DEFAULT_ALPHA = 0.3
 	    C = 0.25
 	    F = 1.0
-	    MASTERY_TIME = 600000 # 1 hours
+	    MASTERY_TIME = 600000 # 10 min
 	    
 	    # Doubt modifiers
-	    CONF_CORR = 1.1 # feeling of knowing predicts retaining of memory 
-	    CONF_WRNG = 0.9 # this just to make it a bit more rigorous?
-	    DOUBT_CORR = 0.9 # Hypercorrection
-	    DOUBT_WRNG = 1 # do nothing
+	    CONF_CORR = 1
+	    CONF_WRNG = 0.9 
+	    DOUBT_CORR = 1.1
+	    DOUBT_WRNG = 1.1
 	
 	    def __init__(self, includeDoubt):
 	        self.facts = []
@@ -1147,7 +1123,7 @@ define sequence trial_sequence
 
 define loop while_there_is_time_left
 	set source table
-	set repeat 16
+	set repeat 10000
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
