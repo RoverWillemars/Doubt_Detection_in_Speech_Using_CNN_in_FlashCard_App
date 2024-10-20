@@ -53,6 +53,7 @@ define inline_script block2_setup
 	set description "Executes Python code"
 	___run__
 	var.time_up = False
+	var.session_start_time = clock.time()
 	
 	# save the data of the first block into a seperate variable for appending map
 	print(m.get_mastered_facts(clock.time()))
@@ -120,6 +121,7 @@ define inline_script block3_setup
 	set description "Executes Python code"
 	___run__
 	var.time_up = False
+	var.session_start_time = clock.time()
 	
 	# save the data of the first block into a seperate variable for appending later
 	dat_b2 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
