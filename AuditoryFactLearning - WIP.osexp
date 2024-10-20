@@ -608,7 +608,7 @@ define inline_script present_trial
 				rt = clock.time() - trial_start_time
 				break
 		
-		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, block_n, image_set, model_type, experiment_order) 
+		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order) 
 			
 		m.register_response(response) 
 	else:
@@ -710,16 +710,16 @@ define inline_script present_trial
 			doubt = doubtPrompt(my_canvas, my_keyboard)
 		
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, doubt, confidence_level, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, correct, speech_response, doubt, confidence_level, block_n, image_set, model_type, experiment_order)
 			elif waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
 		
 		# if there's no doubt check then
 		elif not var.checkDoubt:
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct,  np.nan, confidence_level, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, correct, speech_response, np.nan, confidence_level, block_n, image_set, model_type, experiment_order)
 			elif waitedTooLong:	
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
 		
 		# Register response and write to csv 
 		m.register_response(response) 	
@@ -782,7 +782,7 @@ define inline_script slimstampen_setup
 	from collections import namedtuple
 	
 	Fact = namedtuple("Fact", "fact_id, question, answer")
-	Response = namedtuple("Response","fact, start_time, rt, correct, doubt, doubt_classificationCNN, block_n, image_set, model_type, experiment_order")
+	Response = namedtuple("Response","fact, start_time, rt, correct, user_answer, doubt, doubt_classificationCNN, block_n, image_set, model_type, experiment_order")
 	#Response = namedtuple("Response","fact, start_time, rt, correct")
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
@@ -1122,6 +1122,7 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
+	set source_file ""
 	set source table
 	set repeat 10000
 	set order random
