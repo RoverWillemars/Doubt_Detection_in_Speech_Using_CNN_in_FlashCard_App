@@ -529,16 +529,29 @@ define inline_script present_questions
 	        demo_canvas.show()
 	        
 	    elif key_press == 'return':
-	        # Go to next question
-	        q_index = q_index + 1
+	        # Check for valid answers
+	        validAnswer = True
+	        if q_index == 0 and not answer.isnumeric() and int(answer) >= 0:
+	            # Age check (answer is a number)
+	            validAnswer = False
+	        elif q_index == 1 and answer not in ["male", "female", "other"]:
+	            # Gender check (answer is a gender option)
+	            validAnswer = False
+	        elif q_index == 3 and answer not in ["1", "2", "3", "4", "5"]:
+	            # Rating check (rating is a number between 1 and 5)
+	            validAnswer = False
 	        
-	        # 
-	        if q_index >= len(list_of_questions):
-	            show_demo = False
+	        if validAnswer:
+	            # Go to next question
+	            q_index = q_index + 1
 	            
-	        answer_list.append(answer)
-	        answer = ""
-	        demo_canvas.clear()
+	            # 
+	            if q_index >= len(list_of_questions):
+	                show_demo = False
+	                
+	            answer_list.append(answer)
+	            answer = ""
+	            demo_canvas.clear()
 	    
 	    elif key_press.isalnum() and key_press != 'backspace':
 	        if key_press == "space":
@@ -558,9 +571,9 @@ define inline_script present_questions
 	question_types = ["subj_nr", "age", "gender", "nationality", "geo_familiarity"]
 	list_of_questions=[
 	    "What is your age?",
-	    "What gender do you identify as?",
+	    "What gender do you identify as?\n(Choose from 'male', 'female' or 'other')",
 	    "What nationality are you?",
-	    "How familiar are you with geography?"]
+	    "How familiar are you with geography?\n(Choose from a scale of 1 (not very familiar) to 5 (very familiar))"]
 	__end__
 
 define inline_script present_trial
