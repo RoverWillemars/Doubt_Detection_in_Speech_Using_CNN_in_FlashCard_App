@@ -278,6 +278,7 @@ define inline_script library_function_setup
 	import speech_recognition as sr
 	import soundfile as sf
 	import jellyfish as jf
+	import phonetics as ph
 	import pyttsx3
 	import tensorflow as tf
 	from sklearn.model_selection import train_test_split
@@ -351,21 +352,19 @@ define inline_script library_function_setup
 	
 	# Checks for the phonetic similarity between two phrases
 	def checkSimilarity(answer, speech_answer):
-	    # Split answers into list of words
-	    answer_list = answer.split()
-	    speech_list = speech_answer.split()
+	    ph_ans = ph.dmetaphone(answer)
+	    ph_speech_ans = ph.dmetaphone(speech_answer)
 	    
-	    # If not same amount of words, probably wrong answer
-	    if len(answer_list) != len(speech_list):
-	        return False
+	    if ph_ans[0] == ph_speech_ans[0] and ph_ans[0] != "":
+	        return True
+	    if ph_ans[0] == ph_speech_ans[1] and ph_ans[0] != "":
+	        return True
+	    if ph_ans[1] == ph_speech_ans[0] and ph_ans[1] != "":
+	        return True
+	    if ph_ans[1] == ph_speech_ans[1] and ph_ans[1] != "":
+	        return True
 	    
-	    # Check whether every word in both lists sound similar
-	    for idx in range(len(answer_list)):
-	        encoding = jf.metaphone(answer_list[idx]) == jf.metaphone(speech_list[idx])
-	        if encoding == False:
-	            return False
-	    
-	    return True
+	    return False
 	
 	def speakPhrase(text):
 	    engine = pyttsx3.init("sapi5")
@@ -695,7 +694,10 @@ define inline_script present_trial
 				
 		# Check if the response is correct
 		if error == "":
-			correct = checkSimilarity(answer, speech_response)
+			if answer == speech_response:
+				correct = True
+			else:
+				correct = checkSimilarity(answer, speech_response)
 		else:
 			correct = False
 		
@@ -920,15 +922,6 @@ define inline_script slimstampen_setup
 	
 	    def get_mastered_facts(self, current_time):
 	        return [f for f in self.facts if self.get_mastery_of_fact(current_time, f)]
-	
-	    def get_mastered_facts2(self, current_time):
-	        # Calculate all fact activations after mastery time
-	        fact_activations = [(f, self.calculate_activation(current_time + self.MASTERY_TIME, f)) for f in self.facts]
-	        # Determine which facts have been seen
-	        seen_facts = [(f, a) for (f, a) in fact_activations if a > -float("inf")]
-	        # Determine which seen facts will still be likely to be remembered after mastery time
-	        seen_facts_above_threshold = [(f, a) for (f, a) in seen_facts if a >= self.FORGET_THRESHOLD]
-	        return seen_facts_above_threshold
 	
 	    def get_rate_of_forgetting(self, time, fact):
 	        # type: (int, Fact) -> float
