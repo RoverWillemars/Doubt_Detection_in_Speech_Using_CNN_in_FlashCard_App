@@ -531,13 +531,19 @@ define inline_script present_questions
 	    elif key_press == 'return':
 	        # Check for valid answers
 	        validAnswer = True
-	        if q_index == 0 and not answer.isnumeric() and int(answer) >= 0:
+	        if answer == "":
+	            # Empty answer
+	            validAnswer = False
+	        if q_index == 0 and not answer.isnumeric():
 	            # Age check (answer is a number)
 	            validAnswer = False
-	        elif q_index == 1 and answer not in ["male", "female", "other"]:
+	        if q_index == 0 and answer.isnumeric() and int(answer) < 0:
+	            # Age check (answer is lower than 0)
+	            validAnswer = False
+	        if q_index == 1 and answer not in ["male", "female", "other"]:
 	            # Gender check (answer is a gender option)
 	            validAnswer = False
-	        elif q_index == 3 and answer not in ["1", "2", "3", "4", "5"]:
+	        if q_index == 3 and answer not in ["1", "2", "3", "4", "5"]:
 	            # Rating check (rating is a number between 1 and 5)
 	            validAnswer = False
 	        
@@ -627,7 +633,7 @@ define inline_script present_trial
 				rt = clock.time() - trial_start_time
 				break
 		
-		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order) 
+		response = Response(next_fact, trial_start_time, rt, True, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order, False) 
 			
 		m.register_response(response) 
 	else:
@@ -729,16 +735,16 @@ define inline_script present_trial
 			doubt = doubtPrompt(my_canvas, my_keyboard)
 		
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, speech_response, doubt, confidence_level, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, correct, speech_response, doubt, confidence_level, block_n, image_set, model_type, experiment_order, m.get_mastery_of_fact(clock.time(), next_fact))
 			elif waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order, m.get_mastery_of_fact(clock.time(), next_fact))
 		
 		# if there's no doubt check then
 		elif not var.checkDoubt:
 			if not waitedTooLong:
-				response = Response(next_fact, trial_start_time, rt, correct, speech_response, np.nan, confidence_level, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, correct, speech_response, np.nan, confidence_level, block_n, image_set, model_type, experiment_order, m.get_mastery_of_fact(clock.time(), next_fact))
 			elif waitedTooLong:	
-				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order)
+				response = Response(next_fact, trial_start_time, rt, False, np.nan, np.nan, np.nan, block_n, image_set, model_type, experiment_order, m.get_mastery_of_fact(clock.time(), next_fact))
 		
 		# Register response and write to csv 
 		m.register_response(response) 	
@@ -802,7 +808,7 @@ define inline_script slimstampen_setup
 	from collections import namedtuple
 	
 	Fact = namedtuple("Fact", "fact_id, question, answer")
-	Response = namedtuple("Response","fact, start_time, rt, correct, user_answer, doubt, doubt_classificationCNN, block_n, image_set, model_type, experiment_order")
+	Response = namedtuple("Response","fact, start_time, rt, correct, user_answer, doubt, doubt_classificationCNN, block_n, image_set, model_type, experiment_order, mastery")
 	#Response = namedtuple("Response","fact, start_time, rt, correct")
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
@@ -1126,7 +1132,7 @@ define inline_script slimstampen_setup
 	        # Add column for rate of forgetting estimate after each observation
 	        dat["alpha"] = dat.apply(calc_rof, axis = 1)
 	        # Add column for mastery after each observation
-	        dat["mastery"] = dat.apply(calc_mastery, axis = 1)
+	        #dat["mastery"] = dat.apply(calc_mastery, axis = 1)
 	        dat.drop(columns = "fact", inplace = True)
 	
 	        # Add trial number column
