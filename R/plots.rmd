@@ -1,0 +1,156 @@
+---
+title: "User Modelling, plots"
+output: html_notebook
+---
+
+The [R plugin](https://www.jetbrains.com/help/pycharm/r-plugin-support.html) for IntelliJ-based IDEs provides
+handy capabilities to work with the [R Markdown](https://www.jetbrains.com/help/pycharm/r-markdown.html) files.
+To [add](https://www.jetbrains.com/help/pycharm/r-markdown.html#add-code-chunk) a new R chunk,
+position the caret at any line or the code chunk, then click "+".
+
+Packages:
+```{r echo = T, results = 'hide'}
+library(tidyverse)
+library(reshape2)
+library(ggsignif)
+library(cowplot)
+```
+load data
+```{r echo = T, results = 'hide'}
+path <-  ".//Participant Data Final//"
+trialdata <- list.files(path = path, pattern = "subj_.*\\.csv$", full.names = TRUE) %>%
+    map_df(~ {
+        # Extract the subject number from the filename
+        filename <- basename(.)
+        subj_number <- as.integer(str_extract(filename, pattern ="\\d+")) # string to int
+        # Read the CSV file and add the subject number as a new column
+        read_csv(., show_col_types = FALSE) %>%
+            mutate(subj_nr = subj_number)
+    })
+trialdata$image_set <- factor(trialdata$image_set)
+
+demodata <-
+    list.files(path = path, pattern = "demo_.*\\.csv$", full.names = TRUE) %>%
+    map_df(~read_csv(., show_col_types = FALSE))
+
+```
+Incorporate demo data into trialdata df
+```{r}
+data <- trialdata %>% mutate(model_firstBlock = ifelse(experiment_order == 0 | experiment_order == 2, "Standard", "Doubt-Detection")) %>%
+  left_join(demodata,by = 'subj_nr')
+```
+
+```{r}
+block1data <- data %>% filter(block_n ==1)
+experimentdata <- data %>% filter(block_n !=1)
+```
+basic plots for percentage correct grouped by manipulation
+```{r}
+correctRatio_model <- experimentdata %>%
+  group_by(model_type) %>%
+  summarize(correct = sum(correct == 1),
+            n = n())
+correctRatio_imageSet <- experimentdata %>%
+  group_by(image_set) %>%
+  summarize(correct = sum(correct == 1),
+            n = n())
+
+correctRatio_modelXimage <- experimentdata %>%
+  group_by(model_type,image_set) %>%
+  summarize(correct = sum(correct == 1),
+            n = n()) %>%
+  unite("model_image", model_type, image_set, sep = "_")
+
+correctRatio_order <- experimentdata %>%
+  group_by(model_type, model_firstBlock) %>%
+  summarize(correct = sum(correct == 1),
+            n = n()) %>%
+  unite("firstmodel_model", model_type, model_firstBlock, sep = "_")
+
+correct_bygrouping_list <- list(correctRatio_model, correctRatio_imageSet, correctRatio_modelXimage, correctRatio_order)
+legend_list <-  list(
+  c('Doubt-Detection', 'Standard'),
+  c('Image Set 1', 'Image Set 2'),
+  c('Doubt-Detection x Set 1', 'Doubt-Detection x Set 2', 'Standard x Set 1' ,'Standard x Set 2'),
+  c('Doubt-Detection if DD first block', 'Standard if DD first block', 'Doubt-Detection if Standard first block', 'Standard if Standard first block')
+)
+
+correct_plot_list <- list()
+
+# Now plot
+for (i in 1:length(correct_bygrouping_list)) {
+  category <-  correct_bygrouping_list[[i]]
+  legend <-  legend_list[[i]]
+  grouping <- sym(colnames(category)[1])
+  plot <- category %>%
+  ggplot(aes(x = !!grouping, y = correct/n * 100)) + geom_bar(stat = "identity", aes(fill = !!grouping)) +
+  xlab("") +
+  ylab("Percentage Correct")+
+  ggtitle("percentage correct by grouping") +
+  scale_fill_discrete(labels = legend) +
+  theme_classic() +
+    theme(axis.text.x=element_blank())+
+    theme(legend.title=element_blank())
+
+  correct_plot_list[[grouping]] <- plot
+}
+
+plot_grid(plotlist= correct_plot_list)
+
+```
+percentage correct per country
+```{r}
+#prop.table(table(experimentdata$answer, experimentdata$correct),1)*100
+
+percCorrect_country <- experimentdata %>%
+  group_by(answer) %>%
+  summarize(correct = sum(correct == 1),
+            n = n())
+
+country_plot <- percCorrect_country %>%
+  ggplot(aes(x = answer, y = correct/n * 100)) +
+  geom_bar(width=0.4, position = position_dodge(width=0.5),stat = "identity", aes(fill = answer)) +
+  xlab("") +
+  ylab("Percentage Correct") +
+  scale_fill_discrete(guide="none") +
+  theme_classic()
+
+country_plot
+```
+often seen corrections
+```{r}
+experimentdata <- experimentdata %>%
+  group_by(answer) %>%
+  mutate(perc_correct = sum(correct == 1)/n()) %>% ungroup()
+
+corrections <- experimentdata %>%
+  filter(perc_correct < 0.7) %>%
+  group_by(answer,user_answer) %>%
+  summarize(
+    count = n(), .groups = 'drop') %>%
+  group_by(answer) %>%
+  mutate(total_count = sum(count))
+
+countries_below70 <-  unique(corrections$answer)
+
+country_plot_list <-  list()
+for (i in countries_below70) {
+  country <-  corrections %>% filter(answer == i)
+  plot <- country %>%
+        ggplot(aes(x=user_answer, y = count/total_count * 100)) +
+        geom_bar(stat = "identity", aes(fill = user_answer)) +
+        ggtitle(paste(i, "and it's transcriptions")) +
+        xlab("") +
+        ylab("Percentage") +
+        scale_fill_discrete(guide="none")  +
+        theme_classic()+
+        theme(plot.title = element_text(size=15))
+
+  country_plot_list[[i]] <- plot
+
+}
+
+plot_grid(plotlist=country_plot_list)
+
+
+```
