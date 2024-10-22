@@ -355,13 +355,17 @@ define inline_script library_function_setup
 	    ph_ans = ph.dmetaphone(answer)
 	    ph_speech_ans = ph.dmetaphone(speech_answer)
 	    
-	    if ph_ans[0] == ph_speech_ans[0] and ph_ans[0] != "":
+	    if jf.levenshtein_distance(ph_ans[0], ph_speech_ans[0]) <= 1 \
+	            and ph_ans[0] != "" and ph_speech_ans[0] != "":
 	        return True
-	    if ph_ans[0] == ph_speech_ans[1] and ph_ans[0] != "":
+	    if jf.levenshtein_distance(ph_ans[0], ph_speech_ans[1]) <= 1 \
+	            and ph_ans[0] != "" and ph_speech_ans[1] != "":
 	        return True
-	    if ph_ans[1] == ph_speech_ans[0] and ph_ans[1] != "":
+	    if jf.levenshtein_distance(ph_ans[1], ph_speech_ans[0]) <= 1 \
+	            and ph_ans[1] != "" and ph_speech_ans[0] != "":
 	        return True
-	    if ph_ans[1] == ph_speech_ans[1] and ph_ans[1] != "":
+	    if jf.levenshtein_distance(ph_ans[1], ph_speech_ans[1]) <= 1 \
+	            and ph_ans[1] != "" and ph_speech_ans[1] != "":
 	        return True
 	    
 	    return False
