@@ -1,21 +1,21 @@
 ---
 title: "User Modelling, plots"
-output: html_notebook
+author: Remon
+date: 21/10/2024
+output: rmarkdown::html_vignette
 ---
 
-The [R plugin](https://www.jetbrains.com/help/pycharm/r-plugin-support.html) for IntelliJ-based IDEs provides
-handy capabilities to work with the [R Markdown](https://www.jetbrains.com/help/pycharm/r-markdown.html) files.
-To [add](https://www.jetbrains.com/help/pycharm/r-markdown.html#add-code-chunk) a new R chunk,
-position the caret at any line or the code chunk, then click "+".
-
 Packages:
+
 ```{r echo = T, results = 'hide'}
 library(tidyverse)
 library(reshape2)
 library(ggsignif)
 library(cowplot)
 ```
+
 load data
+
 ```{r echo = T, results = 'hide'}
 path <-  ".//Participant Data Final//"
 trialdata <- list.files(path = path, pattern = "subj_.*\\.csv$", full.names = TRUE) %>%
@@ -34,17 +34,44 @@ demodata <-
     map_df(~read_csv(., show_col_types = FALSE))
 
 ```
+
+omit rows with reregistering of first trial of model (bug)
+
+```{r}
+trialdata <- trialdata %>% filter(start_time != 0)
+```
+
 Incorporate demo data into trialdata df
+
 ```{r}
 data <- trialdata %>% mutate(model_firstBlock = ifelse(experiment_order == 0 | experiment_order == 2, "Standard", "Doubt-Detection")) %>%
   left_join(demodata,by = 'subj_nr')
+
+data$doubt_classificationCNN <- as.factor(data$doubt_classificationCNN)
+data$subj_nr <- as.factor(data$subj_nr)
+data$model_type <- as.factor(data$model_type)
+data$doubt <- as.factor(data$doubt)
+data$doubt_classificationCNN <- as.factor(data$doubt_classificationCNN)
 ```
 
 ```{r}
 block1data <- data %>% filter(block_n ==1)
 experimentdata <- data %>% filter(block_n !=1)
 ```
+
+delete first presentation per answer, per person. This for plotting purposes only, prob shouldnt do this for the analysis
+
+```{r}
+rows_before <-  nrow(experimentdata)
+experimentdata <- experimentdata %>%
+  group_by(subj_nr,answer) %>% slice(-1) %>% ungroup()
+
+rows_after <-  nrow(experimentdata)
+print(paste(rows_before-rows_after, "rows deleted"))
+```
+
 basic plots for percentage correct grouped by manipulation
+
 ```{r}
 correctRatio_model <- experimentdata %>%
   group_by(model_type) %>%
@@ -90,7 +117,11 @@ for (i in 1:length(correct_bygrouping_list)) {
   scale_fill_discrete(labels = legend) +
   theme_classic() +
     theme(axis.text.x=element_blank())+
-    theme(legend.title=element_blank())
+    theme(legend.title=element_blank()) +
+        geom_text(aes(label = paste0(round(correct/n * 100, 1), "%")),
+            position = position_stack(vjust = 1),  # Position labels above bars
+            vjust = -0.1,
+            color = "black")
 
   correct_plot_list[[grouping]] <- plot
 }
@@ -98,7 +129,9 @@ for (i in 1:length(correct_bygrouping_list)) {
 plot_grid(plotlist= correct_plot_list)
 
 ```
+
 percentage correct per country
+
 ```{r}
 #prop.table(table(experimentdata$answer, experimentdata$correct),1)*100
 
@@ -113,11 +146,17 @@ country_plot <- percCorrect_country %>%
   xlab("") +
   ylab("Percentage Correct") +
   scale_fill_discrete(guide="none") +
-  theme_classic()
+  theme_classic() +
+        geom_text(aes(label = paste0(round(correct/n * 100, 1), "%")),
+            position = position_stack(vjust = 1),  # Position labels above bars
+            vjust = -0.1,
+            color = "black")
 
 country_plot
 ```
+
 often seen corrections
+
 ```{r}
 experimentdata <- experimentdata %>%
   group_by(answer) %>%
@@ -144,7 +183,11 @@ for (i in countries_below70) {
         ylab("Percentage") +
         scale_fill_discrete(guide="none")  +
         theme_classic()+
-        theme(plot.title = element_text(size=15))
+        theme(plot.title = element_text(size=15)) +
+        geom_text(aes(label = paste0(round(count / total_count * 100, 1), "%")),
+            position = position_stack(vjust = 1),  # Position labels above bars
+            vjust = -0.1,
+            color = "black")
 
   country_plot_list[[i]] <- plot
 
@@ -153,4 +196,115 @@ for (i in countries_below70) {
 plot_grid(plotlist=country_plot_list)
 
 
+```
+
+```{r}
+# should probably change this to alpha per person
+Alpha_country <- experimentdata %>%
+  group_by(answer, model_type) %>%
+  slice_tail(n=1) %>%
+  summarize(alpha = mean(alpha))
+Alpha_country <- Alpha_country %>%
+  group_by(model_type) %>%
+  mutate(mean_alpha = mean(alpha))
+
+
+
+Alpha_plot <- Alpha_country %>%
+  ggplot(aes(x = answer, y = alpha)) +
+  geom_bar(width=0.4, position = position_dodge(width=0.5),stat = "identity", aes(fill = model_type)) +
+  geom_line(aes(y= mean_alpha, group = model_type, colour = model_type), linetype = "dashed") +
+  xlab("") +
+  ylab("Alpha") +
+  #scale_fill_discrete(guide="none") +
+  theme_classic()
+
+Alpha_plot
+```
+
+check percentage correct CNN classification
+
+```{r}
+propCorrectCNN <- prop.table(table(block1data$doubt, block1data$doubt_classificationCNN),1)*100
+
+rownames(propCorrectCNN) <- c('Confident_byUser', 'Doubtful_byUser')
+
+propCorrectCNN_pp <- block1data %>% 
+  drop_na(doubt) %>% 
+  group_by(subj_nr,doubt, doubt_classificationCNN, .drop = FALSE) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>% 
+  replace(is.na(.), 0)
+```
+
+check percentage correct after error for both systems
+
+```{r}
+experimentdata <- experimentdata %>%
+  group_by(answer) %>% 
+  mutate(correct_after_error = factor(ifelse(correct == TRUE & lag(correct) == FALSE, TRUE , ifelse(correct == FALSE & lag(correct) == FALSE, FALSE, NA)))) %>% ungroup()
+
+correct_after_error_perc <- prop.table(table(experimentdata$correct_after_error, experimentdata$model_type),2)*100 # correct after error
+
+rownames(correct_after_error_perc) <- c('Error_after_error', 'Correct_after_error'); correct_after_error_perc
+
+correct_after_error_pp <- experimentdata %>% 
+  drop_na(correct_after_error) %>% 
+  group_by(subj_nr, model_type, correct_after_error, .drop = FALSE) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n))
+
+correct_after_error_doubt <- experimentdata %>% 
+  drop_na(correct_after_error) %>% 
+  group_by(model_type, doubt_classificationCNN, correct_after_error) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n))
+```
+
+correct after correct
+
+```{r}
+experimentdata <- experimentdata %>%
+  group_by(answer) %>% 
+  mutate(correct_after_correct = factor(ifelse(correct == TRUE & lag(correct) == TRUE, TRUE , ifelse(correct == FALSE & lag(correct) == TRUE, FALSE, NA)))) %>% ungroup()
+
+correct_after_correct_perc <- prop.table(table(experimentdata$correct_after_correct, experimentdata$model_type),2)*100 # correct after error
+
+#rownames(correct_after_correct_perc) <- c('Error_after_correct', 'Correct_after_correct'); correct_after_correct_perc
+
+correct_after_correct_pp <- experimentdata %>% 
+  drop_na(correct_after_correct) %>% 
+  group_by(subj_nr, model_type, correct_after_correct, .drop = FALSE) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n))
+
+correct_after_correct_doubt <- experimentdata %>% 
+  drop_na(correct_after_correct) %>% 
+  group_by(model_type, doubt_classificationCNN, correct_after_correct) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n))
+```
+
+correct after error-correct
+
+```{r}
+experimentdata <- experimentdata %>%
+  group_by(answer) %>% 
+  mutate(correct_after_errcor = factor(ifelse(correct == TRUE & lag(correct_after_error) == TRUE, TRUE , ifelse(correct == FALSE & lag(correct_after_error) == TRUE, FALSE, NA)))) %>% ungroup()
+
+correct_after_errcor_perc <- prop.table(table(experimentdata$correct_after_errcor, experimentdata$model_type),2)*100 # correct after error
+
+rownames(correct_after_errcor_perc) <- c('Correct_after_ErrCor', 'Error_after_ErrCor'); correct_after_errcor_perc
+
+correct_after_errcor_pp <- experimentdata %>% 
+  drop_na(correct_after_errcor) %>% 
+  group_by(subj_nr, model_type, correct_after_errcor, .drop = FALSE) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n))
+
+correct_after_errcor_doubt <- experimentdata %>% 
+  drop_na(correct_after_errcor) %>% 
+  group_by(model_type, doubt_classificationCNN, correct_after_errcor) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n))
 ```
