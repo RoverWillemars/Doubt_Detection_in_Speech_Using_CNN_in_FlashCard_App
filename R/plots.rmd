@@ -124,9 +124,10 @@ for (i in 1:length(correct_bygrouping_list)) {
             color = "black")
 
   correct_plot_list[[grouping]] <- plot
+  print(plot)
 }
 
-plot_grid(plotlist= correct_plot_list)
+#plot_grid(plotlist= correct_plot_list)
 
 ```
 
@@ -190,10 +191,10 @@ for (i in countries_below70) {
             color = "black")
 
   country_plot_list[[i]] <- plot
-
+  print(plot)
 }
 
-plot_grid(plotlist=country_plot_list)
+#plot_grid(plotlist=country_plot_list)
 
 
 ```
@@ -240,6 +241,13 @@ propCorrectCNN_pp <- block1data %>%
 check percentage correct after error for both systems
 
 ```{r}
+# create variable that tracks the lag of doubt detection
+experimentdata <- experimentdata %>% 
+  group_by(answer) %>% 
+  mutate (lag_DoubtClass = lag(doubt_classificationCNN))  %>% 
+  ungroup()
+
+
 experimentdata <- experimentdata %>%
   group_by(answer) %>% 
   mutate(correct_after_error = factor(ifelse(correct == TRUE & lag(correct) == FALSE, TRUE , ifelse(correct == FALSE & lag(correct) == FALSE, FALSE, NA)))) %>% ungroup()
@@ -259,6 +267,28 @@ correct_after_error_doubt <- experimentdata %>%
   group_by(model_type, doubt_classificationCNN, correct_after_error) %>% 
   summarise(n = n()) %>%
   mutate(freq = n / sum(n))
+
+correct_after_error_doubtLag <- experimentdata %>% 
+  drop_na(correct_after_error) %>% 
+  group_by(model_type, lag_DoubtClass, correct_after_error) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>% 
+  drop_na()
+
+correct_after_error_doubtLag %>% filter(correct_after_error == TRUE) %>% 
+        ggplot(aes(x=lag_DoubtClass, y = freq * 100)) +
+        geom_bar(stat = "identity", aes(fill = lag_DoubtClass)) +
+        #ggtitle(paste(i, "and it's transcriptions")) +
+        xlab("Confidence classification lag 1") +
+        ylab("Percentage correct after error") +
+        scale_fill_discrete(guide="none")  +
+        theme_classic()+
+        theme(plot.title = element_text(size=15)) +
+        geom_text(aes(label = paste0(round(freq * 100, 1), "%")),
+            position = position_stack(vjust = 1),  # Position labels above bars
+            vjust = -0.1,
+            color = "black") +
+        facet_wrap(vars(model_type))
 ```
 
 correct after correct
@@ -282,12 +312,40 @@ correct_after_correct_doubt <- experimentdata %>%
   drop_na(correct_after_correct) %>% 
   group_by(model_type, doubt_classificationCNN, correct_after_correct) %>% 
   summarise(n = n()) %>%
-  mutate(freq = n / sum(n))
+  mutate(freq = n / sum(n)) 
+
+correct_after_correct_doubtLag <- experimentdata %>% 
+  drop_na(correct_after_correct) %>% 
+  group_by(model_type, lag_DoubtClass, correct_after_correct) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>% 
+  drop_na()
+
+correct_after_correct_doubtLag %>% filter(correct_after_correct == TRUE) %>% 
+        ggplot(aes(x=lag_DoubtClass, y = freq * 100)) +
+        geom_bar(stat = "identity", aes(fill = lag_DoubtClass)) +
+        #ggtitle(paste(i, "and it's transcriptions")) +
+        xlab("Confidence classification lag 1") +
+        ylab("Percentage correct after correct") +
+        scale_fill_discrete(guide="none")  +
+        theme_classic()+
+        theme(plot.title = element_text(size=15)) +
+        geom_text(aes(label = paste0(round(freq * 100, 1), "%")),
+            position = position_stack(vjust = 1),  # Position labels above bars
+            vjust = -0.1,
+            color = "black") +
+        facet_wrap(vars(model_type))
 ```
 
 correct after error-correct
 
 ```{r}
+# create variable that tracks the lag_2 of doubt detection
+experimentdata <- experimentdata %>% 
+  group_by(answer) %>% 
+  mutate (lag2_DoubtClass = lag(lag(doubt_classificationCNN)))  %>% 
+  ungroup()
+
 experimentdata <- experimentdata %>%
   group_by(answer) %>% 
   mutate(correct_after_errcor = factor(ifelse(correct == TRUE & lag(correct_after_error) == TRUE, TRUE , ifelse(correct == FALSE & lag(correct_after_error) == TRUE, FALSE, NA)))) %>% ungroup()
@@ -307,4 +365,33 @@ correct_after_errcor_doubt <- experimentdata %>%
   group_by(model_type, doubt_classificationCNN, correct_after_errcor) %>% 
   summarise(n = n()) %>%
   mutate(freq = n / sum(n))
+
+correct_after_errcor_doubtLag <- experimentdata %>% 
+  drop_na(correct_after_errcor) %>% 
+  group_by(model_type, lag_DoubtClass, correct_after_errcor) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>% 
+  drop_na()
+
+correct_after_errcor_doubtLag2 <- experimentdata %>% 
+  drop_na(correct_after_errcor) %>% 
+  group_by(model_type, lag2_DoubtClass, correct_after_errcor) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>% 
+  drop_na()
+
+correct_after_errcor_doubtLag2 %>% filter(correct_after_errcor == TRUE) %>% 
+        ggplot(aes(x=lag2_DoubtClass, y = freq * 100)) +
+        geom_bar(stat = "identity", aes(fill = lag2_DoubtClass)) +
+        #ggtitle(paste(i, "and it's transcriptions")) +
+        xlab("Confidence classification lag 1") +
+        ylab("Percentage correct after correct") +
+        scale_fill_discrete(guide="none")  +
+        theme_classic()+
+        theme(plot.title = element_text(size=15)) +
+        geom_text(aes(label = paste0(round(freq * 100, 1), "%")),
+            position = position_stack(vjust = 1),  # Position labels above bars
+            vjust = -0.1,
+            color = "black") +
+        facet_wrap(vars(model_type))
 ```
