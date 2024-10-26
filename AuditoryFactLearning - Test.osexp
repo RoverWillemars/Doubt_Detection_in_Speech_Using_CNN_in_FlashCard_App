@@ -40,10 +40,10 @@ define inline_script append_data
 	set description "Executes Python code"
 	___run__
 	# save the data of the first block into a seperate variable for appending later
-	dat_b3 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
+	dat_b2 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
 	
 	# concatenate data from three blocks
-	dat_total = pd.concat([dat_b1, dat_b2, dat_b3], ignore_index=True)
+	dat_total = pd.concat([dat_b1, dat_b2], ignore_index=True)
 	final_output_path = (os.path.join(data_folders["final_info"], f"subj_{var.subject_nr}_final.csv"))	
 	dat_total.to_csv(final_output_path, index=False) 
 	__end__
@@ -93,61 +93,13 @@ define inline_script block2_setup
 	elif experiment_order == 1 or experiment_order == 3:
 		model_type = "Doubt-Detection"
 	    
-	var.checkDoubt = False # no longer ask for doubt/confidence after trial
+	var.checkDoubt = True
 	
 	# block number
 	block_n = 2
 	
-	# Check whetther doubt detection should be included in next block
-	includeDoubt = False
-	if model_type == "Doubt-Detection":
-		includeDoubt = True
-	
 	# initialize new model
-	m = SpacingModel(includeDoubt = includeDoubt)
-	
-	countries = loadImages()
-	
-	facts = []
-	for idx, name in enumerate(countries.keys()):
-		facts.append(Fact(idx+1, countries[name], name.lower()))
-	
-	for fact in facts:
-		m.add_fact(fact)
-	__end__
-	set _prepare ""
-
-define inline_script block3_setup
-	set description "Executes Python code"
-	___run__
-	var.time_up = False
-	var.session_start_time = clock.time()
-	
-	# save the data of the first block into a seperate variable for appending later
-	dat_b2 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))	
-	
-	if experiment_order == 0 or experiment_order == 1:
-		image_set = 2
-		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_2")
-	elif experiment_order == 2 or experiment_order == 3:
-		image_set = 1
-		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_1") 
-	     
-	if experiment_order == 0 or experiment_order == 2:
-		model_type = "Doubt-Detection"
-	elif experiment_order == 1 or experiment_order == 3:
-		model_type = "Standard"
-	
-	# block number
-	block_n = 3
-	
-	# Check whetther doubt detection should be included in next block
-	includeDoubt = False
-	if model_type == "Doubt-Detection":
-		includeDoubt = True
-	
-	# initialize new model
-	m = SpacingModel(includeDoubt = includeDoubt)
+	m = SpacingModel(includeDoubt = True)
 	
 	countries = loadImages()
 	
@@ -203,15 +155,11 @@ define sequence experiment
 	run learning_session_setup always
 	run library_function_setup True
 	run constants_memoryAlloc_setup True
-	run present_questions True
 	run instructions True
 	run slimstampen_setup always
 	run while_there_is_time_left always
 	run firstblockcompleted True
 	run block2_setup True
-	run while_there_is_time_left True
-	run secondblockcompleted True
-	run block3_setup True
 	run while_there_is_time_left True
 	run append_data True
 	run experimentcompleted True
@@ -259,7 +207,7 @@ define inline_script learning_session_setup
 	var.trial_num = 1
 	
 	# Settings
-	var.session_duration = 900000 # 15 minutes
+	var.session_duration = 1 * 60000 # 15 minutes
 	var.feedback_duration = 800
 	var.inter_trial_interval = 200
 	
@@ -292,11 +240,11 @@ define inline_script library_function_setup
 	def createFolders():
 	    folder_list = {}
 	    
-	    participant_dir = os.path.join(var.main_dir, "participant_data")
+	    participant_dir = os.path.join(var.main_dir, "training_data")
 	    folder_list["participant_data_dir"] = participant_dir
 	    
 	    # Trial info
-	    trial_info_dir = os.path.join(var.main_dir, "participant_data", "trial_info")
+	    trial_info_dir = os.path.join(var.main_dir, "training_data", "trial_info")
 	    if not os.path.exists(trial_info_dir):
 	            os.makedirs(trial_info_dir)
 	    folder_list["trial_info"] = trial_info_dir
@@ -308,13 +256,13 @@ define inline_script library_function_setup
 	    folder_list["final_info"] = final_info_dir
 	    
 	    # Confident
-	    conf_corr_dir = os.path.join(var.main_dir, "participant_data", f"subj_{var.subject_nr}_rec", "confident") # to ensure finetuning data is from respective participant 
+	    conf_corr_dir = os.path.join(var.main_dir, "training_data", f"subj_{var.subject_nr}_rec", "confident") # to ensure finetuning data is from respective participant 
 	    if not os.path.exists(conf_corr_dir):
 		    os.makedirs(conf_corr_dir)
 	    folder_list["confident"] = conf_corr_dir
 	    
 	    # Doubtful
-	    doubt_corr_dir = os.path.join(var.main_dir, "participant_data", f"subj_{var.subject_nr}_rec", "doubtful")
+	    doubt_corr_dir = os.path.join(var.main_dir, "training_data", f"subj_{var.subject_nr}_rec", "doubtful")
 	    if not os.path.exists(doubt_corr_dir):
 		    os.makedirs(doubt_corr_dir)
 	    folder_list["doubtful"] = doubt_corr_dir
@@ -496,91 +444,6 @@ define sketchpad loading_packages
 	set duration 0
 	set description "Displays stimuli"
 	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Welcome! <br /><br />Allocating memory, wait a few seconds please." x=0 y=0 z_index=0
-
-define inline_script present_questions
-	set description "Executes Python code"
-	___run__
-	# had to move this since folder_list is created after prepare phase
-	demo_path = os.path.join(data_folders["final_info"], "demo.csv") # instead of var.main_dir
-	if not os.path.exists(demo_path):
-	    with open(demo_path, 'w', newline='') as file:
-	        writer = csv.writer(file)
-	        writer.writerow(question_types)
-	
-	# create canvas
-	demo_canvas = Canvas()
-	var.q_index = 0
-	answer = ""
-	answer_list = [var.subject_nr]
-	
-	while(show_demo == True):
-	    
-	    demo_canvas.text(list_of_questions[q_index], y=0, font_size=20, color="black")
-	    demo_canvas.text("Write you answer and press ENTER to continue.", y=100, font_size=20, color="black")
-	    demo_canvas.prepare()
-	    demo_canvas.show()
-	    
-	    demo_keyboard = Keyboard()
-	    
-	    key_press, time = demo_keyboard.get_key()
-	    
-	    if key_press == 'backspace' and len(answer) > 0:
-	        answer = answer[:-1]
-	        demo_canvas.clear()
-	        demo_canvas.text(answer, y=200, font_size=20, color="black")
-	        demo_canvas.prepare()
-	        demo_canvas.show()
-	        
-	    elif key_press == 'return':
-	        # Check for valid answers
-	        validAnswer = True
-	        if answer == "":
-	            # Empty answer
-	            validAnswer = False
-	        elif q_index == 0 and (not answer.isnumeric() or (answer.isnumeric() and int(answer) < 0)):
-	            # Age check (answer is a number greather or equal to 0)
-	            validAnswer = False
-	        elif q_index == 1 and answer not in ["male", "female", "other"]:
-	            # Gender check (answer is a gender option)
-	            validAnswer = False
-	        elif q_index == 3 and answer not in ["1", "2", "3", "4", "5"]:
-	            # Rating check (rating is a number between 1 and 5)
-	            validAnswer = False
-	        
-	        if validAnswer:
-	            # Go to next question
-	            q_index = q_index + 1
-	            
-	            # 
-	            if q_index >= len(list_of_questions):
-	                show_demo = False
-	                
-	            answer_list.append(answer)
-	            answer = ""
-	            demo_canvas.clear()
-	    
-	    elif key_press.isalnum() and key_press != 'backspace':
-	        if key_press == "space":
-	            key_press = " "
-	        answer += key_press
-	        demo_canvas.clear()
-	        demo_canvas.text(answer, y=200, font_size=20, color="black")
-	        demo_canvas.prepare()
-	        demo_canvas.show()
-	
-	# Append to the demo.csv file
-	with open(demo_path, 'a', newline='') as file:
-	    writer = csv.writer(file)
-	    writer.writerow(answer_list)
-	__end__
-	___prepare__
-	question_types = ["subj_nr", "age", "gender", "nationality", "geo_familiarity"]
-	list_of_questions=[
-	    "What is your age?",
-	    "What gender do you identify as?\n(Choose from 'male', 'female' or 'other')",
-	    "What nationality are you?",
-	    "How familiar are you with geography?\n(Choose from a scale of 1 (not very familiar) to 5 (very familiar))"]
-	__end__
 
 define inline_script present_trial
 	set description "Executes Python code"
@@ -783,11 +646,6 @@ define inline_script present_trial
 		var.time_up = True
 	__end__
 	set _prepare ""
-
-define sketchpad secondblockcompleted
-	set duration keypress
-	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Second block completed, you can take a short break. <br /><br />Press space when you are ready to continue<br />" x=0 y=0 z_index=0
 
 define inline_script slimstampen_setup
 	set description "Executes Python code"
@@ -1167,7 +1025,6 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
-	set source_file ""
 	set source table
 	set repeat 10000
 	set order random
