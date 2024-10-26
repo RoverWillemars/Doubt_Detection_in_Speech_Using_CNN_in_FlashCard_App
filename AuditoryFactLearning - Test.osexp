@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+set experiment_path "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -80,18 +80,8 @@ define inline_script block2_setup
 	    # Evaluate the fine-tuned model <-- unless we're going to compare models, this is not necessary I think
 	    evaluate_model(loaded_model, X_val_fine, y_val_fine)
 	
-	# set image set and system based on experiment_order
-	if experiment_order == 0 or experiment_order == 1:
-		image_set = 1
-		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_1")
-	elif experiment_order == 2 or experiment_order == 3:
-		image_set = 2
-		images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_2")
-	     
-	if experiment_order == 0 or experiment_order == 2:
-		model_type = "Standard"
-	elif experiment_order == 1 or experiment_order == 3:
-		model_type = "Doubt-Detection"
+	images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\new_set")
+	model_type = "Doubt-Detection"
 	    
 	var.checkDoubt = True
 	
@@ -650,7 +640,7 @@ define inline_script present_trial
 define inline_script slimstampen_setup
 	set description "Executes Python code"
 	___run__
-	m = SpacingModel(includeDoubt = False)
+	m = SpacingModel(includeDoubt = True)
 	
 	countries = loadImages()
 	
