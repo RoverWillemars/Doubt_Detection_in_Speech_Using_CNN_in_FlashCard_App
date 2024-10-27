@@ -70,7 +70,7 @@ define inline_script block2_setup
 	doubtful_dir_finetune = data_folders["doubtful"]
 	n_doubt = len(os.listdir(doubtful_dir_finetune))
 	
-	if n_conf > 3 and n_doubt >3:
+	if n_conf > 4 and n_doubt > 4:
 	    X_fine, y_fine = prepare_dataset(confident_dir_finetune, doubtful_dir_finetune)
 	
 	    # Fine-tune on a smaller set of data (this could be a new dataset or a subset of the original)
