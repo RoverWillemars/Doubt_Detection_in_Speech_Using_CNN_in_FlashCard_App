@@ -175,8 +175,8 @@ define inline_script learning_session_setup
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
-	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	#var.main_dir = "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
 	
 	# Check each trial manually for doubt
@@ -443,7 +443,7 @@ define inline_script present_trial
 	#data_folders = createFolders() <-- we can set fixed variables like these (or others we want to initialize earlier on) in e.g. learning_session inline script.
 	
 	# Determine path of recording file
-	audio_name = f"subj_{var.subject_nr}_trial_{var.trial_num}.wav"
+	audio_name = f"subj_{var.subject_nr}_block{block_n} _trial_{var.trial_num}.wav"
 	
 	# Get next fact from the model
 	next_fact, new = m.get_next_fact(current_time = trial_start_time)
@@ -666,7 +666,7 @@ define inline_script slimstampen_setup
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
 	# ------ MAKE SURE THIS DIRECTORY CONTAINS ONLY THE REQUIRED IMAGES -----
-	images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_2") # this is always set_1 for first block
+	images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_1") 
 	
 	def loadImages():
 	    images = {}
@@ -686,7 +686,7 @@ define inline_script slimstampen_setup
 	    DEFAULT_ALPHA = 0.3
 	    C = 0.25
 	    F = 1.0
-	    MASTERY_TIME = 600000 # 10 min
+	    MASTERY_TIME = 480000 # 10 min
 	    
 	    # Doubt modifiers
 	    CONF_CORR = 1
@@ -1015,7 +1015,6 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
-	set source_file ""
 	set source table
 	set repeat 10000
 	set order random
