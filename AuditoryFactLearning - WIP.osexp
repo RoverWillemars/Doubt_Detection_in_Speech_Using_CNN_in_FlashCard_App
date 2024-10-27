@@ -816,7 +816,7 @@ define inline_script slimstampen_setup
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
 	# ------ MAKE SURE THIS DIRECTORY CONTAINS ONLY THE REQUIRED IMAGES -----
-	images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_training") # this is always set_1 for first block
+	images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_training") # this is always set_training for first block
 	
 	def loadImages():
 	    images = {}
@@ -836,7 +836,7 @@ define inline_script slimstampen_setup
 	    DEFAULT_ALPHA = 0.3
 	    C = 0.25
 	    F = 1.0
-	    MASTERY_TIME = 600000 # 10 min
+	    MASTERY_TIME = 480000 # 8 min
 	    
 	    # Doubt modifiers
 	    CONF_CORR = 1
