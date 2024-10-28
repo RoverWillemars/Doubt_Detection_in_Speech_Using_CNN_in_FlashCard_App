@@ -666,7 +666,7 @@ define inline_script slimstampen_setup
 	Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 	
 	# ------ MAKE SURE THIS DIRECTORY CONTAINS ONLY THE REQUIRED IMAGES -----
-	images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_2") 
+	images_dir = os.path.join(var.main_dir, "Images\\Country_Outlines\\set_1_2_combined") 
 	
 	def loadImages():
 	    images = {}
