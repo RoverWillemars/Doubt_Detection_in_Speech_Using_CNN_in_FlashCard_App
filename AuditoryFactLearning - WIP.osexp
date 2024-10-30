@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -777,10 +777,13 @@ define inline_script present_trial
 	
 	# Check if time is up
 	if block_n == 1:
-		if if perc_mastered_items == 1 or ((clock.time() - var.session_start_time) >= var.block1_duration):
-		var.time_up = True
-	elif block_n > 1:
-		if perc_mastered_items == 1 or ((clock.time() - var.session_start_time) >= var.session_duration):
+		# First block (training)
+		duration = var.block1_duration
+	else:
+		# Second/third block
+		duration = var.session_duration
+		
+	if perc_mastered_items == 1 or ((clock.time() - var.session_start_time) >= duration):
 		var.time_up = True
 	__end__
 	set _prepare ""
@@ -1168,6 +1171,7 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
+	set source_file ""
 	set source table
 	set repeat 10000
 	set order random
