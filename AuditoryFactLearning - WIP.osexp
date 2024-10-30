@@ -60,7 +60,7 @@ define inline_script block2_setup
 	dat_b1 = m.export_data(os.path.join(data_folders["trial_info"], f"subj_{var.subject_nr}_block{block_n}.csv"))
 	
 	##### refine model with new data ####
-	if var.fine_tune is True:
+	if var.fine_tune:
 		# fine-tune model on acquired data from first block
 		confident_dir_finetune = data_folders["confident"]
 		n_conf = len(os.listdir(confident_dir_finetune))
@@ -70,12 +70,12 @@ define inline_script block2_setup
 		if n_conf > 4 and n_doubt > 4:
 			X_fine, y_fine = prepare_dataset(confident_dir_finetune, doubtful_dir_finetune)
 		
-		    	# Fine-tune on a smaller set of data (this could be a new dataset or a subset of the original)
-		    	X_train_fine, X_val_fine, y_train_fine, y_val_fine = train_test_split(X_fine, y_fine, test_size=0.2)  # Example small set
-		    	fine_tune_history = fine_tune_model(loaded_model, X_train_fine, y_train_fine, X_val_fine, y_val_fine, fine_tune_epochs=10)
-		
-		    	# Evaluate the fine-tuned model <-- unless we're going to compare models, this is not necessary I think
-		    	evaluate_model(loaded_model, X_val_fine, y_val_fine)
+	    	# Fine-tune on a smaller set of data (this could be a new dataset or a subset of the original)
+			X_train_fine, X_val_fine, y_train_fine, y_val_fine = train_test_split(X_fine, y_fine, test_size=0.2)  # Example small set
+			fine_tune_history = fine_tune_model(loaded_model, X_train_fine, y_train_fine, X_val_fine, y_val_fine, fine_tune_epochs=10)
+	
+	    	# Evaluate the fine-tuned model <-- unless we're going to compare models, this is not necessary I think
+			evaluate_model(loaded_model, X_val_fine, y_val_fine)
 	
 	# set image set and system based on experiment_order
 	if experiment_order == 0 or experiment_order == 1:
