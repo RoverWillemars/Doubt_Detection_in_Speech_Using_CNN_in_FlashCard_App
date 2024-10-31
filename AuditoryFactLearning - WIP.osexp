@@ -26,7 +26,7 @@ set font_size 18
 set font_italic False
 set font_family mono
 set font_bold False
-set experiment_path "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+set experiment_path "C:/Users/remon/OneDrive/Bureaublad/BCN_ReMa2/User_Modelling/GitHub"
 set disable_garbage_collection False
 set description "The main experiment item"
 set coordinates uniform
@@ -234,8 +234,8 @@ define inline_script learning_session_setup
 	___prepare__
 	# Main directory, containing all necessary files and folder
 	#var.main_dir = "C:\\Users\\Rover\\user-modelling-project-neural-navigators" 
-	var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
-	#var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
+	#var.main_dir = "D:\\Studie\\User Modelling\\user-modelling-project-neural-navigators"
+	var.main_dir = "C:\\Users\\remon\\OneDrive\\Bureaublad\\BCN_ReMa2\\User_Modelling\\GitHub"
 	#var.main_dir = "C:\\Users\\rlina\\Documents\\Block1\\User modelling\\gitcode\\user-modelling-project-neural-navigators"
 	
 	# Check each trial manually for doubt
@@ -703,6 +703,7 @@ define inline_script present_trial
 				correct = checkSimilarity(answer, speech_response)
 		else:
 			correct = False
+			speech_response = error
 		
 		# Show feedback
 		feedback_color = "green" if correct else "red"
@@ -1171,7 +1172,6 @@ define sequence trial_sequence
 	run present_trial always
 
 define loop while_there_is_time_left
-	set source_file ""
 	set source table
 	set repeat 10000
 	set order random
